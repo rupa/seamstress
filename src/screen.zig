@@ -211,8 +211,8 @@ fn window_rect(gui: *Gui) void {
     gui.height = @divFloor(@intCast(u16, ysize), gui.zoom);
     sdl_call(c.SDL_RenderSetScale(
         gui.render,
-        @intToFloat(f32, gui.zoom),
-        @intToFloat(f32, gui.zoom),
+        @floatFromInt(f32, gui.zoom),
+        @floatFromInt(f32, gui.zoom),
     ), "window_rect()");
 }
 
@@ -237,23 +237,23 @@ pub fn check() void {
                 quit = true;
             },
             c.SDL_MOUSEMOTION => {
-                const zoom = @intToFloat(f64, windows[ev.button.windowID - 1].zoom);
+                const zoom = @floatFromInt(f64, windows[ev.button.windowID - 1].zoom);
                 const event = .{
                     .Screen_Mouse_Motion = .{
-                        .x = @intToFloat(f64, ev.button.x) / zoom,
-                        .y = @intToFloat(f64, ev.button.y) / zoom,
+                        .x = @floatFromInt(f64, ev.button.x) / zoom,
+                        .y = @floatFromInt(f64, ev.button.y) / zoom,
                         .window = ev.motion.windowID,
                     },
                 };
                 events.post(event);
             },
             c.SDL_MOUSEBUTTONDOWN, c.SDL_MOUSEBUTTONUP => {
-                const zoom = @intToFloat(f64, windows[ev.button.windowID - 1].zoom);
+                const zoom = @floatFromInt(f64, windows[ev.button.windowID - 1].zoom);
                 const event = .{
                     .Screen_Mouse_Click = .{
                         .state = ev.button.state == c.SDL_PRESSED,
-                        .x = @intToFloat(f64, ev.button.x) / zoom,
-                        .y = @intToFloat(f64, ev.button.y) / zoom,
+                        .x = @floatFromInt(f64, ev.button.x) / zoom,
+                        .y = @floatFromInt(f64, ev.button.y) / zoom,
                         .button = ev.button.button,
                         .window = ev.button.windowID,
                     },

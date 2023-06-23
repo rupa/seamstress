@@ -75,7 +75,7 @@ pub fn set_tempo(bpm: f64) void {
     const ticks_per_sec = beats_per_sec * 96;
     const seconds_per_tick = 1.0 / ticks_per_sec;
     const nanoseconds_per_tick = seconds_per_tick * std.time.ns_per_s;
-    fabric.tick = @floatToInt(u64, nanoseconds_per_tick);
+    fabric.tick = @intFromFloat(u64, nanoseconds_per_tick);
 }
 
 pub fn get_tempo() f64 {
@@ -83,7 +83,7 @@ pub fn get_tempo() f64 {
 }
 
 pub fn get_beats() f64 {
-    return @intToFloat(f64, fabric.ticks_since_start) / 96.0;
+    return @floatFromInt(f64, fabric.ticks_since_start) / 96.0;
 }
 
 fn wait(nanoseconds: u64) void {
@@ -98,7 +98,7 @@ pub fn cancel(id: u8) void {
 
 pub fn schedule_sleep(id: u8, seconds: f64) void {
     fabric.lock.lock();
-    const delta = @floatToInt(u64, seconds * std.time.ns_per_s);
+    const delta = @intFromFloat(u64, seconds * std.time.ns_per_s);
     fabric.threads[id].delta = delta;
     fabric.threads[id].inactive = false;
     fabric.lock.unlock();
@@ -107,9 +107,9 @@ pub fn schedule_sleep(id: u8, seconds: f64) void {
 pub fn schedule_sync(id: u8, beat: f64, offset: f64) void {
     fabric.lock.lock();
     const tick_sync = beat * 96;
-    const ticks_elapsed = std.math.mod(f64, @intToFloat(f64, fabric.ticks_since_start), tick_sync) catch unreachable;
+    const ticks_elapsed = std.math.mod(f64, @floatFromInt(f64, fabric.ticks_since_start), tick_sync) catch unreachable;
     const next_tick = tick_sync - ticks_elapsed + offset;
-    const delta = @floatToInt(u64, next_tick * @intToFloat(f64, fabric.tick));
+    const delta = @intFromFloat(u64, next_tick * @floatFromInt(f64, fabric.tick));
     fabric.threads[id].delta = delta;
     fabric.threads[id].inactive = false;
     fabric.lock.unlock();
