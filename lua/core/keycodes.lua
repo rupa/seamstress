@@ -1,3 +1,6 @@
+--- helper module for translating SDL keycodes
+-- @module keycodes
+
 local key = {}
 key.__index = function(t, index)
   if t == key then
