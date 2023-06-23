@@ -11,18 +11,20 @@ const clock = @import("clock.zig");
 const screen = @import("screen.zig");
 const metro = @import("metros.zig");
 const ziglua = @import("ziglua");
+const c = @import("input.zig").c;
 
 const Lua = ziglua.Lua;
 var lvm: Lua = undefined;
 var config_file: []const u8 = undefined;
 var script_file: [:0]const u8 = undefined;
 var allocator: std.mem.Allocator = undefined;
+const logger = std.log.scoped(.spindle);
 
 pub fn init(config: []const u8, alloc_pointer: std.mem.Allocator) !void {
     config_file = config;
     allocator = alloc_pointer;
 
-    std.debug.print("starting lua vm\n", .{});
+    logger.info("starting lua vm", .{});
     lvm = try Lua.init(allocator);
 
     lvm.openLibs();
@@ -72,6 +74,8 @@ pub fn init(config: []const u8, alloc_pointer: std.mem.Allocator) !void {
     register_seamstress("reset_lvm", ziglua.wrap(reset_lvm));
     register_seamstress("quit_lvm", ziglua.wrap(quit_lvm));
 
+    register_seamstress("print", ziglua.wrap(lua_print));
+
     _ = lvm.pushString(args.local_port);
     lvm.setField(-2, "local_port");
     _ = lvm.pushString(args.remote_port);
@@ -94,7 +98,7 @@ fn register_seamstress(name: [:0]const u8, f: ziglua.CFn) void {
 }
 
 pub fn deinit() void {
-    std.debug.print("\nshutting down lua vm\n", .{});
+    logger.info("shutting down lua vm", .{});
     lvm.deinit();
     if (save_buf) |s| allocator.free(s);
 }
@@ -158,7 +162,7 @@ fn osc_send(l: *Lua) i32 {
     l.checkType(3, ziglua.LuaType.table);
     const len = l.rawLen(3);
     msg = allocator.alloc(osc.Lo_Arg, len) catch |err| {
-        if (err == error.OutOfMemory) std.debug.print("out of memory!\n", .{});
+        if (err == error.OutOfMemory) logger.err("out of memory!\n", .{});
         return 0;
     };
     defer allocator.free(msg);
@@ -600,7 +604,7 @@ fn midi_write(l: *Lua) i32 {
     const len = l.rawLen(2);
     var i: c_longlong = 1;
     var msg = allocator.allocSentinel(u8, @intCast(usize, len), 0) catch |err| {
-        if (err == error.OutOfMemory) std.debug.print("out of memory!\n", .{});
+        if (err == error.OutOfMemory) logger.err("out of memory!", .{});
         return 0;
     };
     while (i <= len) : (i += 1) {
@@ -926,9 +930,7 @@ fn do_resume(l: *Lua, idx: c_longlong) i32 {
     var top: i32 = 0;
     const status = l.resumeThread(null, l.getTop() - 1, &top) catch {
         _ = message_handler(l);
-        lua_print(l) catch {
-            std.debug.print("couldn't print error!\n", .{});
-        };
+        _ = lua_print(l);
         l.setTop(0);
         return 0;
     };
@@ -979,12 +981,17 @@ pub fn clock_transport(ev_type: clock.Transport) !void {
 // -------------------------------------------------------
 // lua interpreter
 
-fn lua_print(l: *Lua) !void {
+fn lua_print(l: *Lua) i32 {
+    _ = c.rl_set_prompt("");
+    _ = c.rl_redisplay();
     const n = l.getTop();
-    l.checkStackErr(1, "too many results to print");
-    _ = try l.getGlobal("print");
+    l.checkStackErr(2, "too many results to print");
+    _ = l.getGlobal("_old_print") catch unreachable;
     l.insert(1);
     l.call(n, 0);
+    _ = c.rl_set_prompt("> ");
+    _ = c.rl_redisplay();
+    return 0;
 }
 
 fn run_code(code: [:0]const u8) !void {
@@ -1013,29 +1020,27 @@ fn clear_statement_buffer() void {
     allocator.free(save_buf.?);
     save_buf = null;
 }
+fn slice_from_ptr(ptr: [*:0]const u8) [:0]const u8 {
+    var len: usize = 0;
+    while (ptr[len] != 0) : (len += 1) {}
+    return ptr[0..len :0];
+}
 
 fn message_handler(l: *Lua) i32 {
-    if (l.typeOf(1) == ziglua.LuaType.string) {
-        const msg = l.toString(1) catch unreachable;
-        l.traceback(l, std.mem.span(msg), 1);
-        return 1;
-    } else {
+    var allocated = false;
+    const msg = l.toString(1) catch blk: {
         l.callMeta(1, "__tostring") catch {
-            const msg = std.fmt.allocPrint(allocator, "(error object is a {s} value)", .{l.typeName(l.typeOf(1))}) catch {
-                _ = l.pushString("(error object is not a string!)");
-                return 1;
-            };
-            defer allocator.free(msg);
-            var realmsg = allocator.allocSentinel(u8, msg.len, 0) catch {
-                _ = l.pushString("(error object is not a string!)");
-                return 1;
-            };
-            defer allocator.free(realmsg);
-            std.mem.copyForwards(u8, realmsg, msg);
-            _ = l.pushString(realmsg[0..msg.len :0]);
+            const fmted = std.fmt.allocPrintZ(allocator, "(error object is a {s} value)", .{l.typeName(l.typeOf((1)))}) catch unreachable;
+            allocated = true;
+            break :blk fmted.ptr;
         };
-        return 1;
-    }
+        break :blk l.toString(1) catch unreachable;
+    };
+    const message = slice_from_ptr(msg);
+    defer if (allocated) allocator.free(message);
+    l.pop(1);
+    l.traceback(l, message, 4);
+    return 1;
 }
 
 fn docall(l: *Lua, nargs: i32, nres: i32) !void {
@@ -1044,7 +1049,7 @@ fn docall(l: *Lua, nargs: i32, nres: i32) !void {
     l.insert(base);
     l.protectedCall(nargs, nres, base) catch {
         l.remove(base);
-        try lua_print(l);
+        _ = lua_print(l);
         return;
     };
     l.remove(base);
@@ -1053,41 +1058,41 @@ fn docall(l: *Lua, nargs: i32, nres: i32) !void {
 fn handle_line(l: *Lua, line: [:0]const u8) !void {
     l.setTop(0);
     _ = l.pushString(line);
-    if (save_buf != null) {
-        statement(l) catch |err| {
-            if (err != error.Syntax) return err;
+    if (save_buf) |b| {
+        _ = b;
+        if (try statement(l)) {
             l.setTop(0);
-            std.debug.print(">... ", .{});
+            _ = c.rl_set_prompt(">... ");
             return;
-        };
+        }
     } else {
         add_return(l) catch |err| {
-            if (err != error.Syntax) return err;
-            statement(l) catch |err2| {
-                if (err2 != error.Syntax) return err2;
+            if (err == error.Syntax and try statement(l)) {
                 l.setTop(0);
-                std.debug.print(">... ", .{});
+                _ = c.rl_set_prompt(">... ");
                 return;
-            };
+            }
         };
     }
+    _ = c.rl_set_prompt("");
+    _ = c.rl_redisplay();
     try docall(l, 0, ziglua.mult_return);
     if (l.getTop() == 0) {
-        std.debug.print("> ", .{});
+        _ = c.rl_set_prompt("> ");
+        _ = c.rl_redisplay();
     } else {
-        try lua_print(l);
-        std.debug.print("> ", .{});
+        _ = lua_print(l);
     }
     l.setTop(0);
 }
 
-fn statement(l: *Lua) !void {
+fn statement(l: *Lua) !bool {
     const line = try l.toString(1);
     var buf: []u8 = undefined;
-    if (save_buf == null) {
-        buf = try std.fmt.allocPrint(allocator, "{s}", .{line});
+    if (save_buf) |b| {
+        buf = try std.fmt.allocPrint(allocator, "{s}\n{s}", .{ b, line });
     } else {
-        buf = try std.fmt.allocPrint(allocator, "{s}\n{s}", .{ save_buf.?, line });
+        buf = try std.fmt.allocPrint(allocator, "{s}", .{line});
     }
     defer allocator.free(buf);
     l.loadBuffer(buf, "=stdin", ziglua.Mode.text) catch |err| {
@@ -1097,14 +1102,18 @@ fn statement(l: *Lua) !void {
         if ((msg.len >= eofmark.len) and std.mem.eql(u8, eofmark, msg[(msg.len - eofmark.len)..msg.len])) {
             l.pop(1);
             try save_statement_buffer(buf);
+            return true;
         } else {
             clear_statement_buffer();
             l.remove(-2);
+            _ = message_handler(l);
+            _ = lua_print(l);
+            return false;
         }
-        return err;
     };
     clear_statement_buffer();
     l.remove(1);
+    return false;
 }
 
 fn add_return(l: *Lua) !void {
