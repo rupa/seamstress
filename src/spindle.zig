@@ -942,30 +942,29 @@ fn do_resume(l: *Lua, idx: c_longlong) i32 {
         ziglua.ResumeStatus.yield => {
             if (top < 2) l.raiseErrorStr("error: clock.sleep/sync requires at least 1 argument", .{});
             const sleep_type = l.checkInteger(1);
-            l.pop(1);
             switch (sleep_type) {
                 0 => {
-                    const seconds = l.checkNumber(1);
-                    l.pop(1);
+                    const seconds = l.checkNumber(2);
                     clock.schedule_sleep(@intCast(u8, idx - 1), seconds);
                 },
                 1 => {
-                    const beats = l.checkNumber(1);
+                    const beats = l.checkNumber(2);
                     l.pop(1);
                     const offset = if (top >= 3) blk: {
-                        const val = l.checkNumber(1);
-                        l.pop(1);
+                        const val = l.checkNumber(3);
                         break :blk val;
                     } else 0;
                     clock.schedule_sync(@intCast(u8, idx - 1), beats, offset);
                 },
                 else => {
-                    l.raiseErrorStr("expected CLOCK_SCHEDULE_SLEEP or CLOCK_SCHEDULE_SYNC, got {d}", .{sleep_type});
+                    l.setTop(0);
+                    l.raiseErrorStr("expected CLOCK_SCHEDULE_SLEEP or CLOCK_SCHEDULE_SYNC, got {}", .{sleep_type});
                     return 1;
                 },
             }
         },
     }
+    l.setTop(0);
     return 0;
 }
 
