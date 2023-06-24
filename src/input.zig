@@ -1,6 +1,7 @@
 const std = @import("std");
 const events = @import("events.zig");
 pub const c = @cImport({
+    @cInclude("stdlib.h");
     @cInclude("stdio.h");
     @cInclude("readline/readline.h");
     @cInclude("readline/history.h");
@@ -25,13 +26,10 @@ pub fn deinit() void {
 fn input_run() !void {
     c.using_history();
     c.stifle_history(500);
-    var buf: [1024]u8 = undefined;
-    const slice = try std.fs.selfExeDirPath(&buf);
-    std.debug.print("{s}\n", .{slice});
     const home = std.os.getenv("HOME");
     var history_file: []u8 = undefined;
     if (home) |h| {
-        history_file = try std.fmt.allocPrintZ(allocator, "{s}/.seamstress_history", .{h});
+        history_file = try std.fmt.allocPrint(allocator, "{s}/.seamstress_history", .{h});
         const file = try std.fs.createFileAbsolute(history_file, .{ .read = true, .truncate = false });
         file.close();
         _ = c.read_history(history_file.ptr);
@@ -56,13 +54,14 @@ fn input_run() !void {
             quit = true;
             continue;
         };
-        c.add_history(c_line);
         const line = try std.fmt.allocPrintZ(allocator, "{s}\n", .{c_line});
         if (std.mem.eql(u8, line, "quit\n")) {
             quit = true;
             allocator.free(line);
+            c.free(c_line);
             continue;
         }
+        c.add_history(c_line);
         // const len = stdin.read(buf) catch break;
         // if (len == 0) break;
         // if (len >= buf.len - 1) {
