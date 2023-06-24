@@ -61,7 +61,7 @@ fn input_run() !void {
             c.free(c_line);
             continue;
         }
-        c.add_history(c_line);
+        _ = c.add_history(c_line);
         // const len = stdin.read(buf) catch break;
         // if (len == 0) break;
         // if (len >= buf.len - 1) {
