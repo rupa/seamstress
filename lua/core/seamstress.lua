@@ -4,10 +4,15 @@ grid = require 'core/grid'
 arc = require 'core/arc'
 osc = require 'core/osc'
 util = require 'lib/util'
+tab = require 'lib/tabutil'
 screen = require 'core/screen'
 metro = require 'core/metro'
 midi = require 'core/midi'
 clock = require 'core/clock'
+controlspec = require 'core/controlspec'
+paramset = require 'core/params'
+paramsMenu = require 'core/menu/params-menu'
+params = paramset.new()
 print = _seamstress.print
 
 --- global init function to be overwritten in user scripts.
@@ -39,5 +44,6 @@ _startup = function (script_file)
   else
     require(script_file)
     init()
+    paramsMenu.init()
   end
 end
