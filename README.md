@@ -14,7 +14,7 @@ brew install lua liblo readline rtmidi sdl2 sdl2_ttf
 
 building from source requires the master build of [zig](https://github.com/ziglang/zig).
 download a binary from [here](https://ziglang.org/download/) and add it to your PATH.
-currently the earliest zig supported is `0.11.0-dev.3771+128fd7dd0`.
+currently the earliest zig supported is `0.11.0-dev.3859`.
 once zig 0.11 is released, seamstress will follow releases of zig, rather than the master.
 to build, invoke
 
