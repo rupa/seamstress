@@ -180,10 +180,7 @@ const Queue = struct {
     cond: std.Thread.Condition,
     inline fn get_new(self: *Queue) *Node {
         var node = self.write_head orelse {
-            @setCold(true);
-            std.debug.assert(self.write_size == 0);
-            logger.err("no nodes free!\n", .{});
-            unreachable;
+            @panic("no nodes free!");
         };
         self.write_head = node.next;
         node.next = null;
@@ -197,7 +194,6 @@ const Queue = struct {
             n.next = node;
             node.prev = n;
         } else {
-            @setCold(true);
             std.debug.assert(self.write_size == 0);
             self.write_head = node;
             self.write_tail = node;
