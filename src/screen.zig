@@ -189,7 +189,7 @@ pub fn arc(radius: i32, theta_1: f64, theta_2: f64) void {
     std.debug.assert(theta_1 <= theta_2);
     std.debug.assert(theta_2 <= std.math.tau);
     const angle_length = (theta_2 - theta_1) * std.math.tau;
-    const perimeter_estimate: usize = 6 * @as(usize, @intCast(radius)) * @as(usize, @intFromFloat(angle_length));
+    const perimeter_estimate: usize = 6 * @as(usize, @intCast(radius)) * @as(usize, @intFromFloat(angle_length)) + 9;
     const gui = windows[current];
     var points = std.ArrayList(c.SDL_Point).initCapacity(allocator, perimeter_estimate) catch @panic("OOM!");
     defer points.deinit();
@@ -250,76 +250,8 @@ pub fn arc(radius: i32, theta_1: f64, theta_2: f64) void {
 }
 
 pub fn sector(radius: i32, theta_1: f64, theta_2: f64) void {
-    std.debug.assert(0 < theta_1);
-    std.debug.assert(theta_1 < theta_2);
-    std.debug.assert(theta_2 < std.math.tau);
-    const angle_length = (theta_2 - theta_1) * std.math.tau;
-    const perimeter_estimate: usize = 6 * @as(usize, @intCast(radius)) * @as(usize, @intFromFloat(angle_length));
-    const gui = windows[current];
-    var points = std.ArrayList(c.SDL_Point).initCapacity(allocator, perimeter_estimate) catch @panic("OOM!");
-    defer points.deinit();
-    points.appendAssumeCapacity(.{
-        .x = gui.x,
-        .y = gui.y,
-    });
-    var offset_x: i32 = 0;
-    var offset_y: i32 = radius;
-    var d = radius - 1;
-    while (offset_y >= offset_x) {
-        const pts = [8]c.SDL_Point{ .{
-            .x = gui.x + offset_x,
-            .y = gui.y + offset_y,
-        }, .{
-            .x = gui.x + offset_y,
-            .y = gui.y + offset_x,
-        }, .{
-            .x = gui.x - offset_x,
-            .y = gui.y + offset_y,
-        }, .{
-            .x = gui.x - offset_y,
-            .y = gui.y + offset_x,
-        }, .{
-            .x = gui.x + offset_x,
-            .y = gui.y - offset_y,
-        }, .{
-            .x = gui.x + offset_y,
-            .y = gui.y - offset_x,
-        }, .{
-            .x = gui.x - offset_x,
-            .y = gui.y - offset_y,
-        }, .{
-            .x = gui.x - offset_y,
-            .y = gui.y - offset_x,
-        } };
-        for (pts) |pt| {
-            const num: f64 = @floatFromInt(pt.x);
-            const denom: f64 = @floatFromInt(pt.y);
-            const theta = std.math.atan(num / denom);
-            if (theta_1 <= theta and theta <= theta_2) {
-                points.appendAssumeCapacity(pt);
-                points.appendAssumeCapacity(.{
-                    .x = gui.x,
-                    .y = gui.y,
-                });
-            }
-        }
-        if (d >= 2 * offset_x) {
-            d -= 2 * offset_x + 1;
-            offset_x += 1;
-        } else if (d < 2 * (radius - offset_y)) {
-            d += 2 * offset_y - 1;
-            offset_y -= 1;
-        } else {
-            d += 2 * (offset_y - offset_x - 1);
-            offset_y -= 1;
-            offset_x += 1;
-        }
-    }
-    const slice = points.items;
-    sdl_call(
-        c.SDL_RenderDrawPoints(gui.render, slice.ptr, @intCast(slice.len)),
-        "screen.sector()",
-    );
+    var i: i32 = 0;
+    while (i <= radius) : (i += 1) arc(i, theta_1, theta_2);
 }
 
 const Size = struct {

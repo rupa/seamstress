@@ -180,7 +180,6 @@ function Screen.get_text_size(text)
 end
 
 --- returns the size of the current window.
--- @function Screen.
 -- @treturn integer w width in pixels
 -- @treturn integer h height in pixels
 -- @function screen.get_size
