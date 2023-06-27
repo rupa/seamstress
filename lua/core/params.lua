@@ -146,7 +146,7 @@ function ParamSet:add_binary(id, name, default, behavior)
 	self:add { param = binary.new(id, name, behavior or "toggle", default) }
 end
 
---- add trigger..
+--- add trigger.
 -- @tparam string id (no spaces)
 -- @tparam string name (can contain spaces)
 function ParamSet:add_trigger(id, name)
@@ -219,14 +219,14 @@ function ParamSet:list()
 end
 
 --- name.
--- @tparam index
+-- @tparam string index
 function ParamSet:get_name(index)
   if type(index)=="string" then index = self.lookup[index] end
   return self.params[index].name or ""
 end
 
 --- query whether param used the number template.
--- @tparam index
+-- @tparam string index
 function ParamSet:is_number(index)
   if type(index)=="string" then index = self.lookup[index] end
   return self.params[index].is_number or false
@@ -240,6 +240,7 @@ end
 
 --- string.
 -- @param index
+-- @param[opt] quant quantity to get string representation of
 function ParamSet:string(index, quant)
   local param = self:lookup_param(index)
   return param:string(quant)

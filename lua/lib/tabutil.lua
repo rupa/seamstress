@@ -42,7 +42,7 @@ end
 --- given a simple table of primitives, 
 --- "invert" it so that values become keys and vice versa.
 --- this allows more efficient checks on multiple values
--- @param t: a simple table
+-- @param t a simple table
 Tab.invert = function(t)
   local inv = {}
   for k,v in pairs(t) do
