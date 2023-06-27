@@ -112,7 +112,7 @@ fn osc_receive(
 ) callconv(.C) c_int {
     _ = user_data;
     const arg_size = @intCast(usize, argc);
-    var message: []Lo_Arg = allocator.alloc(Lo_Arg, arg_size) catch unreachable;
+    var message: []Lo_Arg = allocator.alloc(Lo_Arg, arg_size) catch @panic("OOM!");
 
     var i: usize = 0;
     while (i < argc) : (i += 1) {
@@ -170,14 +170,14 @@ fn osc_receive(
         }
     }
     const path_slice = std.mem.span(path);
-    var path_copy = allocator.allocSentinel(u8, path_slice.len, 0) catch unreachable;
+    var path_copy = allocator.allocSentinel(u8, path_slice.len, 0) catch @panic("OOM!");
     std.mem.copyForwards(u8, path_copy, path_slice);
     const source = c.lo_message_get_source(msg);
     const host = std.mem.span(c.lo_address_get_hostname(source));
-    var host_copy = allocator.allocSentinel(u8, host.len, 0) catch unreachable;
+    var host_copy = allocator.allocSentinel(u8, host.len, 0) catch @panic("OOM!");
     std.mem.copyForwards(u8, host_copy, host);
     const port = std.mem.span(c.lo_address_get_port(source));
-    var port_copy = allocator.allocSentinel(u8, port.len, 0) catch unreachable;
+    var port_copy = allocator.allocSentinel(u8, port.len, 0) catch @panic("OOM!");
     std.mem.copyForwards(u8, port_copy, port);
 
     const event = .{ .OSC = .{

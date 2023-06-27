@@ -180,7 +180,6 @@ pub fn add(name: []const u8, dev_type: []const u8, port: i32) void {
             device.get_size();
         }
     } else {
-        @setCold(true);
         logger.err("too many devices! not adding {s}\n", .{name});
     }
 }
@@ -199,7 +198,6 @@ pub fn remove(name: []const u8) void {
             return;
         }
     }
-    @setCold(true);
     logger.err("trying to remove device {s} which was not added!\n", .{name});
 }
 

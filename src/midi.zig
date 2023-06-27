@@ -252,7 +252,6 @@ fn add(dev_type: Dev_t, port_number: c_uint, name: [:0]const u8) !?u8 {
         }
     }
     var device = free orelse {
-        @setCold(true);
         logger.err("too many devices! not adding {s}", .{name});
         return null;
     };
