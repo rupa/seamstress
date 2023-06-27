@@ -69,6 +69,9 @@ pub fn init(config: []const u8, alloc_pointer: std.mem.Allocator) !void {
     register_seamstress("clock_resume", ziglua.wrap(clock_resume));
     register_seamstress("clock_get_tempo", ziglua.wrap(clock_get_tempo));
     register_seamstress("clock_get_beats", ziglua.wrap(clock_get_beats));
+    register_seamstress("clock_internal_set_tempo", ziglua.wrap(clock_internal_set_tempo));
+    register_seamstress("clock_internal_start", ziglua.wrap(clock_internal_start));
+    register_seamstress("clock_internal_stop", ziglua.wrap(clock_internal_stop));
     register_seamstress("clock_cancel", ziglua.wrap(clock_cancel));
 
     register_seamstress("reset_lvm", ziglua.wrap(reset_lvm));
@@ -639,6 +642,35 @@ fn clock_get_beats(l: *Lua) i32 {
     const beats = clock.get_beats();
     l.pushNumber(beats);
     return 1;
+}
+
+/// sets internal clock tempo.
+// users should use the clock param instead
+// @param bpm
+// @function clock_internal_set_tempo
+fn clock_internal_set_tempo(l: *Lua) i32 {
+    check_num_args(l, 1);
+    const bpm = l.checkNumber(1);
+    clock.set_tempo(bpm);
+    return 0;
+}
+
+/// starts internal clock.
+// users should use the clock param instead
+// @function clock_internal_start
+fn clock_internal_start(l: *Lua) i32 {
+    check_num_args(l, 0);
+    clock.start() catch unreachable;
+    return 0;
+}
+
+/// stops internal clock.
+// users should use the clock param instead
+// @function clock_internal_stop
+fn clock_internal_stop(l: *Lua) i32 {
+    check_num_args(l, 0);
+    clock.stop();
+    return 0;
 }
 
 /// cancels coroutine.

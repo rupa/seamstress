@@ -3,6 +3,7 @@
 
 local control = require 'core/params/control'
 local group = require 'core/params/group'
+local binary = require 'core/params/binary'
 local separator = require 'core/params/separator'
 local controlspec = require 'core/controlspec'
 
@@ -10,6 +11,7 @@ local ParamSet = {
   tSEPARATOR = 0,
   tGROUP = 1,
   tCONTROL = 2,
+  tBINARY = 3,
   sets = {}
 }
 
@@ -59,6 +61,10 @@ function ParamSet:add(args)
       param = self:add_option(id, name, args.options, args.default)
     elseif args.type == "control" then
       param = self:add_control(id, name, args.controlspec, args.formatter)
+    elseif args.type == "binary" then
+      param = self:add_binary(id, name, args.default, args.behavior or 'toggle')
+    elseif args.type == "trigger" then
+      param = self:add_trigger(id, name)
     elseif args.type == "separator" then
       param = separator.new(id, name)
     elseif args.type == "group" then
@@ -129,6 +135,22 @@ function ParamSet:add_option(id, name, options, default)
   local cs = controlspec.new(1,#options,'lin',1,default,units,1/(#options-1))
   local frm = function(param) return options[(type(param) == 'table' and param:get() or param)] end
   self:add { param=control.new(id, name, cs, frm) }
+end
+
+--- add binary.
+-- @tparam string id (no spaces)
+-- @tparam string name (can contain spaces)
+-- @tparam integer default 0 or 1
+-- @tparam string behavior "toggle" or "trigger" or "momentary"; defaults to "toggle"
+function ParamSet:add_binary(id, name, default, behavior)
+	self:add { param = binary.new(id, name, behavior or "toggle", default) }
+end
+
+--- add trigger..
+-- @tparam string id (no spaces)
+-- @tparam string name (can contain spaces)
+function ParamSet:add_trigger(id, name)
+	self:add { param = binary.new(id, name, "trigger") }
 end
 
 --- add control.

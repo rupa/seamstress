@@ -21,7 +21,7 @@ end
 -- @tparam number max maximum
 -- @treturn number clamped value
 function Util.clamp(n, min, max)
-  return math.min(max,(math.max(n,min)))
+  return math.min(max, (math.max(n, min)))
 end
 
 -- linlin, linexp, explin, expexp ripped from SC source code
@@ -40,7 +40,7 @@ function Util.linexp(slo, shi, dlo, dhi, f)
   elseif f >= shi then
     return dhi
   else
-    return ((dhi/dlo) ^ ((f-slo) / (shi-slo) )) * dlo
+    return ((dhi / dlo) ^ ((f - slo) / (shi - slo))) * dlo
   end
 end
 
@@ -57,7 +57,7 @@ function Util.linlin(slo, shi, dlo, dhi, f)
   elseif f >= shi then
     return dhi
   else
-    return (f-slo) / (shi-slo) * (dhi-dlo) + dlo
+    return (f - slo) / (shi - slo) * (dhi - dlo) + dlo
   end
 end
 
@@ -74,7 +74,7 @@ function Util.explin(slo, shi, dlo, dhi, f)
   elseif f >= shi then
     return dhi
   else
-    return math.log(f/slo) / math.log(shi/slo) * (dhi-dlo) + dlo
+    return math.log(f / slo) / math.log(shi / slo) * (dhi - dlo) + dlo
   end
 end
 
@@ -91,7 +91,7 @@ function Util.expexp(slo, shi, dlo, dhi, f)
   elseif f >= shi then
     return dhi
   else
-    return ((dhi/dlo) ^ (math.log(f/slo) / math.log(shi/slo))) * dlo
+    return ((dhi / dlo) ^ (math.log(f / slo) / math.log(shi / slo))) * dlo
   end
 end
 
@@ -103,7 +103,7 @@ function Util.round(number, quant)
   if quant == 0 then
     return number
   else
-    return math.floor(number/(quant or 1) + 0.5) * (quant or 1)
+    return math.floor(number / (quant or 1) + 0.5) * (quant or 1)
   end
 end
 
@@ -126,6 +126,17 @@ function Util.os_capture(cmd, raw)
   s = string.gsub(s, '^%s+', '')
   s = string.gsub(s, '%s+$', '')
   s = string.gsub(s, '[\n\r]+', ' ')
+end
+
+--- convert string to acronym
+-- @tparam string name
+-- @treturn string acronym
+function Util.acronym(name)
+  name = name:gsub("[%w']+", function(word)
+    if not word:find("%U") then return word end
+    return word:sub(1, 1)
+  end)
+  return (name:gsub("%s+", ""))
 end
 
 return Util

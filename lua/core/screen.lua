@@ -138,6 +138,7 @@ _seamstress.screen = {
     end
   end,
   resized = function(x, y, window)
+    paramsMenu.redraw()
     if Screen.resized ~= nil then
       Screen.resized(x, y, window)
     end

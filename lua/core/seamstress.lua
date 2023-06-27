@@ -15,6 +15,10 @@ paramsMenu = require 'core/menu/params-menu'
 params = paramset.new()
 print = _seamstress.print
 
+seamstress = {}
+
+seamstress.state = require 'core/state'
+
 --- global init function to be overwritten in user scripts.
 init = function () end
 
@@ -43,6 +47,7 @@ _startup = function (script_file)
     print("create such a file and place it in either CWD or ~/seamstress")
   else
     require(script_file)
+    clock.add_params()
     init()
     paramsMenu.init()
   end

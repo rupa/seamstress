@@ -115,22 +115,28 @@ pub fn schedule_sync(id: u8, beat: f64, offset: f64) void {
     fabric.lock.unlock();
 }
 
-pub fn stop() !void {
+pub fn stop() void {
     fabric.quit = true;
-    fabric.clock.join();
+    if (fabric.clock) |pid| pid.join();
     fabric.clock = null;
-    var event = try events.new(events.Event.Clock_Transport);
-    event.Clock_Transport.transport = Transport.Stop;
-    try events.post(event);
+    const event = .{
+        .Clock_Transport = .{
+            .transport = .Stop,
+        },
+    };
+    events.post(event);
 }
 
 pub fn start() !void {
     if (fabric.clock == null) {
         fabric.clock = try std.Thread.spawn(.{}, Fabric.loop, .{fabric});
     }
-    var event = try events.new(events.Event.Clock_Transport);
-    event.Clock_Transport.transport = Transport.Start;
-    try events.post(event);
+    const event = .{
+        .Clock_Transport = .{
+            .transport = .Start,
+        },
+    };
+    events.post(event);
 }
 
 pub fn reset(beat: u64) void {
