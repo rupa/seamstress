@@ -185,6 +185,7 @@ const Queue = struct {
         self.write_head = node.next;
         node.next = null;
         node.prev = null;
+        std.debug.assert(self.write_size > 0);
         self.write_size -= 1;
         return node;
     }

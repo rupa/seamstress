@@ -74,7 +74,6 @@ pub fn init(config: []const u8, alloc_pointer: std.mem.Allocator) !void {
 
     register_seamstress("midi_write", ziglua.wrap(midi_write));
 
-    register_seamstress("clock_resume", ziglua.wrap(clock_resume));
     register_seamstress("clock_get_tempo", ziglua.wrap(clock_get_tempo));
     register_seamstress("clock_get_beats", ziglua.wrap(clock_get_beats));
     register_seamstress("clock_internal_set_tempo", ziglua.wrap(clock_internal_set_tempo));
@@ -553,6 +552,7 @@ fn screen_arc(l: *Lua) i32 {
     const theta_1 = l.checkNumber(2);
     const theta_2 = l.checkNumber(3);
     screen.arc(@intCast(radius), theta_1, theta_2);
+    l.setTop(0);
     return 0;
 }
 
@@ -569,6 +569,7 @@ fn screen_sector(l: *Lua) i32 {
     const theta_1 = l.checkNumber(2);
     const theta_2 = l.checkNumber(3);
     screen.sector(@intCast(radius), theta_1, theta_2);
+    l.setTop(0);
     return 0;
 }
 
@@ -777,26 +778,11 @@ fn clock_internal_stop(l: *Lua) i32 {
 // @function clock_cancel
 fn clock_cancel(l: *Lua) i32 {
     check_num_args(l, 1);
-    const idx = l.checkInteger(1);
+    const idx = l.checkInteger(1) - 1;
     l.setTop(0);
     if (idx < 0 or idx > 100) return 0;
     clock.cancel(@intCast(idx));
     return 0;
-}
-
-/// resumes coroutine.
-// @param id coroutine id (1-100);
-// @param co coroutine corresponding to id
-// @param ... args passed to `coroutine.resume`.
-// @see clock.run
-// @function clock_run
-fn clock_resume(l: *Lua) i32 {
-    const num_args = l.getTop();
-    if (num_args < 2) return 0;
-    const idx = l.checkInteger(1);
-    var co = l.toThread(2) catch unreachable;
-    l.pop(2);
-    return do_resume(&co, idx);
 }
 
 /// resets lua VM.
@@ -1052,49 +1038,44 @@ pub fn resume_clock(idx: u8) !void {
     _ = lvm.getIndex(-1, i);
     var thread = try lvm.toThread(-1);
     lvm.pop(4);
-    _ = do_resume(&thread, i);
-}
-
-fn do_resume(l: *Lua, idx: c_longlong) i32 {
     var top: i32 = 0;
-    const status = l.resumeThread(null, l.getTop() - 1, &top) catch {
-        _ = message_handler(l);
-        _ = lua_print(l);
-        l.setTop(0);
-        return 0;
+    const status = thread.resumeThread(lvm, 0, &top) catch {
+        _ = message_handler(&lvm);
+        _ = lua_print(&lvm);
+        lvm.setTop(0);
+        return;
     };
     switch (status) {
         ziglua.ResumeStatus.ok => {
             clock.cancel(@intCast(idx));
-            return top;
+            lvm.setTop(0);
+            return;
         },
         ziglua.ResumeStatus.yield => {
-            if (top < 2) l.raiseErrorStr("error: clock.sleep/sync requires at least 1 argument", .{});
-            const sleep_type = l.checkInteger(1);
+            if (top < 2) lvm.raiseErrorStr("error: clock.sleep/sync requires at least 1 argument", .{});
+            const sleep_type = lvm.checkInteger(1);
             switch (sleep_type) {
                 0 => {
-                    const seconds = l.checkNumber(2);
+                    const seconds = lvm.checkNumber(2);
                     clock.schedule_sleep(@intCast(idx - 1), seconds);
                 },
                 1 => {
-                    const beats = l.checkNumber(2);
-                    l.pop(1);
+                    const beats = lvm.checkNumber(2);
+                    lvm.pop(1);
                     const offset = if (top >= 3) blk: {
-                        const val = l.checkNumber(3);
+                        const val = lvm.checkNumber(3);
                         break :blk val;
                     } else 0;
                     clock.schedule_sync(@intCast(idx - 1), beats, offset);
                 },
                 else => {
-                    l.setTop(0);
-                    l.raiseErrorStr("expected CLOCK_SCHEDULE_SLEEP or CLOCK_SCHEDULE_SYNC, got {}", .{sleep_type});
-                    return 1;
+                    lvm.setTop(0);
+                    lvm.raiseErrorStr("expected CLOCK_SCHEDULE_SLEEP or CLOCK_SCHEDULE_SYNC, got {}", .{sleep_type});
                 },
             }
         },
     }
-    l.setTop(0);
-    return 0;
+    lvm.setTop(0);
 }
 
 pub fn clock_transport(ev_type: clock.Transport) !void {

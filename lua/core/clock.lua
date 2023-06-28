@@ -21,7 +21,7 @@ function clock.run(f, ...)
   local co = coroutine.create(f)
   local id = new_id()
   _seamstress.clock.threads[id] = co
-  _seamstress.clock_resume(id, co, ...)
+  coroutine.resume(co, ...)
   return id
 end
 

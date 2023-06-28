@@ -47,8 +47,8 @@ _startup = function (script_file)
     print("create such a file and place it in either CWD or ~/seamstress")
   else
     require(script_file)
+  end
     clock.add_params()
     init()
     paramsMenu.init()
-  end
 end
