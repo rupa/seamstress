@@ -14,6 +14,7 @@ var HEIGHT: u16 = 128;
 var ZOOM: u16 = 4;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.screen);
+var check_back = true;
 
 const Gui = struct {
     window: *c.SDL_Window = undefined,
@@ -380,6 +381,7 @@ fn window_rect(gui: *Gui) void {
 }
 
 pub fn check() void {
+    defer check_back = true;
     var ev: c.SDL_Event = undefined;
     while (c.SDL_PollEvent(&ev) != 0) {
         switch (ev.type) {
@@ -482,7 +484,10 @@ pub fn deinit() void {
 
 fn loop() void {
     while (!quit) {
-        events.post(.{ .Screen_Check = {} });
+        if (check_back) {
+            events.post(.{ .Screen_Check = {} });
+            check_back = false;
+        }
         std.time.sleep(10 * std.time.ns_per_ms);
     }
 }

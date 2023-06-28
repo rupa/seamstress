@@ -673,7 +673,7 @@ fn metro_start(l: *Lua) i32 {
 fn metro_stop(l: *Lua) i32 {
     check_num_args(l, 1);
     const idx: u8 = @intCast(l.checkInteger(1) - 1);
-    metro.stop(idx) catch unreachable;
+    metro.stop(idx);
     l.setTop(0);
     return 0;
 }
