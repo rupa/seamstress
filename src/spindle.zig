@@ -98,7 +98,6 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     lvm.setGlobal("_seamstress");
 
     const cmd = try std.fmt.allocPrint(allocator, "dofile(\"{s}\")\n", .{config});
-    std.debug.print("{s}", .{cmd});
     defer allocator.free(cmd);
     try run_code(cmd);
     try run_code("require('core/seamstress')");

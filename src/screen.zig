@@ -289,6 +289,7 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
     }
 
     const filename = try std.fmt.allocPrintZ(allocator, "{s}/04b03.ttf", .{resources});
+    defer allocator.free(filename);
     var f = c.TTF_OpenFont(filename, 8);
     font = f orelse {
         logger.err("screen.init(): {s}\n", .{c.TTF_GetError()});
