@@ -20,7 +20,7 @@ var script_file: [:0]const u8 = undefined;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.spindle);
 
-pub fn init(config: []const u8, alloc_pointer: std.mem.Allocator) !void {
+pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Allocator) !void {
     config_file = config;
     allocator = alloc_pointer;
 
@@ -90,15 +90,17 @@ pub fn init(config: []const u8, alloc_pointer: std.mem.Allocator) !void {
     lvm.setField(-2, "local_port");
     _ = lvm.pushString(args.remote_port);
     lvm.setField(-2, "remote_port");
+    const prefixZ = try allocator.dupeZ(u8, prefix);
+    defer allocator.free(prefixZ);
+    _ = lvm.pushString(prefixZ);
+    lvm.setField(-2, "prefix");
 
     lvm.setGlobal("_seamstress");
 
-    const cmd = try std.fmt.allocPrint(allocator, "dofile({s})\n ", .{config});
+    const cmd = try std.fmt.allocPrint(allocator, "dofile(\"{s}\")\n", .{config});
+    std.debug.print("{s}", .{cmd});
     defer allocator.free(cmd);
-    var realcmd = try allocator.allocSentinel(u8, cmd.len, 0);
-    defer allocator.free(realcmd);
-    std.mem.copyForwards(u8, realcmd, cmd);
-    try run_code(realcmd[0..cmd.len :0]);
+    try run_code(cmd);
     try run_code("require('core/seamstress')");
 }
 
@@ -887,8 +889,12 @@ pub fn osc_event(
 }
 
 pub fn reset_lua() !void {
+    _ = try lvm.getGlobal("_seamstress");
+    _ = lvm.getField(-1, "prefix");
+    const prefix = try allocator.dupe(u8, std.mem.sliceTo(try lvm.toString(-1), 0));
+    defer allocator.free(prefix);
     deinit();
-    try init(config_file, allocator);
+    try init(prefix, config_file, allocator);
     try startup(script_file);
 }
 
@@ -1103,11 +1109,11 @@ fn lua_print(l: *Lua) i32 {
     return 0;
 }
 
-fn run_code(code: [:0]const u8) !void {
+fn run_code(code: []const u8) !void {
     try dostring(&lvm, code, "s_run_code");
 }
 
-fn dostring(l: *Lua, str: [:0]const u8, name: [:0]const u8) !void {
+fn dostring(l: *Lua, str: []const u8, name: [:0]const u8) !void {
     try l.loadBuffer(str, name, ziglua.Mode.text);
     try docall(l, 0, 0);
 }

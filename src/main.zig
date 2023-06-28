@@ -24,6 +24,8 @@ var allocator: std.mem.Allocator = undefined;
 
 pub fn main() !void {
     start_time = std.time.milliTimestamp();
+    var loc_buf = [_]u8{0} ** 1024;
+    const location = try std.fs.selfExeDirPath(&loc_buf);
     const logger = std.log.scoped(.main);
     try args.parse();
     logfile = try std.fs.createFileAbsolute("/tmp/seamstress.log", .{});
@@ -34,17 +36,17 @@ pub fn main() !void {
     allocator = general_allocator.allocator();
     defer _ = general_allocator.deinit();
 
+    const path = try std.fs.path.join(allocator, &.{ location, "..", "share", "seamstress", "lua" });
+    defer allocator.free(path);
+    var pref_buf = [_]u8{0} ** 1024;
+    const prefix = try std.fs.realpath(path, &pref_buf);
     defer logger.info("seamstress shutdown complete", .{});
-    var allocated = true;
     const config = std.process.getEnvVarOwned(allocator, "SEAMSTRESS_CONFIG") catch |err| blk: {
         if (err == std.process.GetEnvVarOwnedError.EnvironmentVariableNotFound) {
-            allocated = false;
-            break :blk "'/usr/local/share/seamstress/lua/config.lua'";
-        } else {
-            return err;
-        }
+            break :blk try std.fs.path.join(allocator, &.{ prefix, "config.lua" });
+        } else return err;
     };
-    defer if (allocated) allocator.free(config);
+    defer allocator.free(config);
 
     logger.info("init events", .{});
     try events.init(allocator);
@@ -59,7 +61,7 @@ pub fn main() !void {
     defer clocks.deinit();
 
     logger.info("init spindle", .{});
-    try spindle.init(config, allocator);
+    try spindle.init(prefix, config, allocator);
     defer spindle.deinit();
 
     logger.info("init MIDI", .{});
