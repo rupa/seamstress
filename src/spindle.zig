@@ -62,7 +62,8 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     register_seamstress("screen_set", ziglua.wrap(screen_set));
     register_seamstress("screen_show", ziglua.wrap(screen_show));
     register_seamstress("screen_arc", ziglua.wrap(screen_arc));
-    register_seamstress("screen_sector", ziglua.wrap(screen_sector));
+    register_seamstress("screen_circle", ziglua.wrap(screen_circle));
+    register_seamstress("screen_circle_fill", ziglua.wrap(screen_circle_fill));
     register_seamstress("screen_move", ziglua.wrap(screen_move));
     register_seamstress("screen_move_rel", ziglua.wrap(screen_move_rel));
     register_seamstress("screen_get_size", ziglua.wrap(screen_get_size));
@@ -557,19 +558,28 @@ fn screen_arc(l: *Lua) i32 {
     return 0;
 }
 
-/// draws a filled-in circle arc to the screen.
-// users should use `screen.sector` instead
+/// draws a circle to the screen.
+// users should use `screen.circle` instead
 // @param radius radius of the circle in pixels
-// @param theta_1 angle to start at (0-2*pi)
-// @param theta_2 angle to finish at (0-2*pi)
-// @see screen.sector
-// @function screen_sector
-fn screen_sector(l: *Lua) i32 {
-    check_num_args(l, 3);
+// @see screen.circle
+// @function screen_circle
+fn screen_circle(l: *Lua) i32 {
+    check_num_args(l, 1);
     const radius = l.checkInteger(1);
-    const theta_1 = l.checkNumber(2);
-    const theta_2 = l.checkNumber(3);
-    screen.sector(@intCast(radius), theta_1, theta_2);
+    screen.circle(@intCast(radius));
+    l.setTop(0);
+    return 0;
+}
+
+/// draws a filled-in circle to the screen.
+// users should use `screen.circle_fill` instead
+// @param radius radius of the circle in pixels
+// @see screen.circle_fill
+// @function screen_circle_fill
+fn screen_circle_fill(l: *Lua) i32 {
+    check_num_args(l, 1);
+    const radius = l.checkInteger(1);
+    screen.circle_fill(@intCast(radius));
     l.setTop(0);
     return 0;
 }

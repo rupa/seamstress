@@ -14,7 +14,6 @@ var HEIGHT: u16 = 128;
 var ZOOM: u16 = 4;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.screen);
-var check_back = true;
 
 const Gui = struct {
     window: *c.SDL_Window = undefined,
@@ -189,8 +188,8 @@ pub fn arc(radius: i32, theta_1: f64, theta_2: f64) void {
     std.debug.assert(0 <= theta_1);
     std.debug.assert(theta_1 <= theta_2);
     std.debug.assert(theta_2 <= std.math.tau);
-    const angle_length = (theta_2 - theta_1) * std.math.tau;
-    const perimeter_estimate: usize = 6 * @as(usize, @intCast(radius)) * @as(usize, @intFromFloat(angle_length)) + 9;
+    const angle_length = (theta_2 - theta_1) * @as(f64, @floatFromInt(radius));
+    const perimeter_estimate: usize = 2 * @as(usize, @intFromFloat(angle_length)) + 9;
     const gui = windows[current];
     var points = std.ArrayList(c.SDL_Point).initCapacity(allocator, perimeter_estimate) catch @panic("OOM!");
     defer points.deinit();
@@ -250,9 +249,81 @@ pub fn arc(radius: i32, theta_1: f64, theta_2: f64) void {
     );
 }
 
-pub fn sector(radius: i32, theta_1: f64, theta_2: f64) void {
-    var i: i32 = 0;
-    while (i <= radius) : (i += 1) arc(i, theta_1, theta_2);
+pub fn circle(radius: i32) void {
+    const perimeter_estimate: usize = @intFromFloat(2 * std.math.tau * @as(f64, @floatFromInt(radius)));
+    const gui = windows[current];
+    var points = std.ArrayList(c.SDL_Point).initCapacity(allocator, perimeter_estimate) catch @panic("OOM!");
+    defer points.deinit();
+    var offset_x: i32 = 0;
+    var offset_y: i32 = radius;
+    var d = radius - 1;
+    while (offset_y >= offset_x) {
+        const pts = [8]c.SDL_Point{ .{
+            .x = gui.x + offset_x,
+            .y = gui.y + offset_y,
+        }, .{
+            .x = gui.x + offset_y,
+            .y = gui.y + offset_x,
+        }, .{
+            .x = gui.x - offset_x,
+            .y = gui.y + offset_y,
+        }, .{
+            .x = gui.x - offset_y,
+            .y = gui.y + offset_x,
+        }, .{
+            .x = gui.x + offset_x,
+            .y = gui.y - offset_y,
+        }, .{
+            .x = gui.x + offset_y,
+            .y = gui.y - offset_x,
+        }, .{
+            .x = gui.x - offset_x,
+            .y = gui.y - offset_y,
+        }, .{
+            .x = gui.x - offset_y,
+            .y = gui.y - offset_x,
+        } };
+        points.appendSliceAssumeCapacity(&pts);
+        if (d >= 2 * offset_x) {
+            d -= 2 * offset_x + 1;
+            offset_x += 1;
+        } else if (d < 2 * (radius - offset_y)) {
+            d += 2 * offset_y - 1;
+            offset_y -= 1;
+        } else {
+            d += 2 * (offset_y - offset_x - 1);
+            offset_y -= 1;
+            offset_x += 1;
+        }
+    }
+    const slice = points.items;
+    sdl_call(
+        c.SDL_RenderDrawPoints(gui.render, slice.ptr, @intCast(slice.len)),
+        "screen.circle()",
+    );
+}
+
+pub fn circle_fill(radius: i32) void {
+    const r = if (radius < 0) -radius else radius;
+    const rsquared = radius * radius;
+    const gui = windows[current];
+    var points = std.ArrayList(c.SDL_Point).initCapacity(allocator, @intCast(4 * rsquared + 2)) catch @panic("OOM!");
+    defer points.deinit();
+    var i = -r;
+    while (i <= r) : (i += 1) {
+        var j = -r;
+        while (j <= r) : (j += 1) {
+            if (i * i + j * j < rsquared) points.appendAssumeCapacity(.{
+                .x = gui.x + i,
+                .y = gui.y + j,
+            });
+        }
+    }
+    const slice = points.items;
+    sdl_call(
+        c.SDL_RenderDrawPoints(gui.render, slice.ptr, @intCast(slice.len)),
+        "screen.circle_fill()",
+    );
 }
 
 const Size = struct {
@@ -381,7 +452,6 @@ fn window_rect(gui: *Gui) void {
 }
 
 pub fn check() void {
-    defer check_back = true;
     var ev: c.SDL_Event = undefined;
     while (c.SDL_PollEvent(&ev) != 0) {
         switch (ev.type) {
@@ -484,10 +554,7 @@ pub fn deinit() void {
 
 fn loop() void {
     while (!quit) {
-        if (check_back) {
-            events.post(.{ .Screen_Check = {} });
-            check_back = false;
-        }
+        events.post(.{ .Screen_Check = {} });
         std.time.sleep(10 * std.time.ns_per_ms);
     }
 }

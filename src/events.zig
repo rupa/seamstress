@@ -4,7 +4,6 @@ const osc = @import("serialosc.zig");
 const monome = @import("monome.zig");
 const screen = @import("screen.zig");
 const clock = @import("clock.zig");
-const metros = @import("metros.zig");
 const midi = @import("midi.zig");
 
 const logger = std.log.scoped(.events);
@@ -357,10 +356,7 @@ fn handle(event: *Data) !void {
         .Screen_Mouse_Click => |e| try spindle.screen_click(e.x, e.y, e.state, e.button, e.window),
         .Screen_Check => screen.check(),
         .Screen_Resized => |e| try spindle.screen_resized(e.w, e.h, e.window),
-        .Metro => |e| {
-            try spindle.metro_event(e.id, e.stage);
-            metros.set_hot(e.id);
-        },
+        .Metro => |e| try spindle.metro_event(e.id, e.stage),
         .MIDI_Add => |e| try spindle.midi_add(e.dev),
         .MIDI_Remove => |e| try spindle.midi_remove(e.dev_type, e.id),
         .MIDI => |e| try spindle.midi_event(e.id, e.timestamp, e.message),

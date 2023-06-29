@@ -26,11 +26,8 @@ const Metro = struct {
         self.thread = null;
     }
     fn bang(self: *Metro) void {
-        if (self.hot) {
-            const event = .{ .Metro = .{ .id = self.id, .stage = self.stage } };
-            events.post(event);
-            self.hot = false;
-        } else logger.warn("metro {d}: overrun!", .{self.id});
+        const event = .{ .Metro = .{ .id = self.id, .stage = self.stage } };
+        events.post(event);
     }
     fn init(self: *Metro, delta: u64, count: i64) !void {
         self.delta = delta;
