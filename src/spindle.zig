@@ -15,13 +15,10 @@ const c = @import("input.zig").c;
 
 const Lua = ziglua.Lua;
 var lvm: Lua = undefined;
-var config_file: []const u8 = undefined;
-var script_file: [:0]const u8 = undefined;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.spindle);
 
 pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Allocator) !void {
-    config_file = config;
     allocator = alloc_pointer;
 
     logger.info("starting lua vm", .{});
@@ -82,7 +79,6 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     register_seamstress("clock_internal_stop", ziglua.wrap(clock_internal_stop));
     register_seamstress("clock_cancel", ziglua.wrap(clock_cancel));
 
-    register_seamstress("reset_lvm", ziglua.wrap(reset_lvm));
     register_seamstress("quit_lvm", ziglua.wrap(quit_lvm));
 
     register_seamstress("print", ziglua.wrap(lua_print));
@@ -110,14 +106,20 @@ fn register_seamstress(name: [:0]const u8, f: ziglua.CFn) void {
 }
 
 pub fn deinit() void {
-    logger.info("shutting down lua vm", .{});
-    lvm.deinit();
-    if (save_buf) |s| allocator.free(s);
+    defer {
+        logger.info("shutting down lua vm", .{});
+        lvm.deinit();
+        if (save_buf) |s| allocator.free(s);
+    }
+    logger.info("calling cleanup", .{});
+    _ = lvm.getGlobal("_seamstress") catch unreachable;
+    _ = lvm.getField(-1, "cleanup");
+    lvm.remove(-2);
+    docall(&lvm, 0, 0) catch unreachable;
 }
 
 pub fn startup(script: [:0]const u8) !void {
-    script_file = script;
-    _ = lvm.pushString(script_file);
+    _ = lvm.pushString(script);
     _ = try lvm.getGlobal("_startup");
     lvm.insert(1);
     try docall(&lvm, 1, 0);
@@ -796,17 +798,6 @@ fn clock_cancel(l: *Lua) i32 {
     return 0;
 }
 
-/// resets lua VM.
-// @function reset_lvm
-fn reset_lvm(l: *Lua) i32 {
-    check_num_args(l, 0);
-    events.post(.{
-        .Reset_LVM = {},
-    });
-    l.setTop(0);
-    return 0;
-}
-
 /// quits seamstress
 // @function quit_lvm
 fn quit_lvm(l: *Lua) i32 {
@@ -895,16 +886,6 @@ pub fn osc_event(
     lvm.rawSetIndex(-2, 2);
 
     // report(lvm, docall(lvm, 3, 0));
-}
-
-pub fn reset_lua() !void {
-    _ = try lvm.getGlobal("_seamstress");
-    _ = lvm.getField(-1, "prefix");
-    const prefix = try allocator.dupe(u8, std.mem.sliceTo(try lvm.toString(-1), 0));
-    defer allocator.free(prefix);
-    deinit();
-    try init(prefix, config_file, allocator);
-    try startup(script_file);
 }
 
 pub fn monome_add(dev: *monome.Monome) !void {

@@ -21,6 +21,8 @@ seamstress.state = require 'core/state'
 
 --- global init function to be overwritten in user scripts.
 init = function () end
+--- global cleanup function to be overwritten in user scripts.
+cleanup = function () end
 
 _seamstress.monome = {
   add = function (id, serial, name, dev)
@@ -51,4 +53,8 @@ _startup = function (script_file)
     clock.add_params()
     init()
     paramsMenu.init()
+end
+
+_seamstress.cleanup = function()
+  if cleanup ~= nil then cleanup() end
 end
