@@ -407,9 +407,9 @@ fn screen_refresh(l: *Lua) i32 {
 // @function screen_move
 fn screen_move(l: *Lua) i32 {
     check_num_args(l, 2);
-    const x = l.checkInteger(1);
-    const y = l.checkInteger(2);
-    screen.move(@intCast(x - 1), @intCast(y - 1));
+    const x = l.checkNumber(1);
+    const y = l.checkNumber(2);
+    screen.move(@intFromFloat(x - 1), @intFromFloat(y - 1));
     return 0;
 }
 
@@ -421,9 +421,9 @@ fn screen_move(l: *Lua) i32 {
 // @function screen_move_rel
 fn screen_move_rel(l: *Lua) i32 {
     check_num_args(l, 2);
-    const x = l.checkInteger(1);
-    const y = l.checkInteger(2);
-    screen.move_rel(@intCast(x), @intCast(y));
+    const x = l.checkNumber(1);
+    const y = l.checkNumber(2);
+    screen.move_rel(@intFromFloat(x), @intFromFloat(y));
     return 0;
 }
 
@@ -435,9 +435,9 @@ fn screen_move_rel(l: *Lua) i32 {
 // @function screen_pixel
 fn screen_pixel(l: *Lua) i32 {
     check_num_args(l, 2);
-    const x = l.checkInteger(1);
-    const y = l.checkInteger(2);
-    screen.pixel(@intCast(x - 1), @intCast(y - 1));
+    const x = l.checkNumber(1);
+    const y = l.checkNumber(2);
+    screen.pixel(@intFromFloat(x - 1), @intFromFloat(y - 1));
     return 0;
 }
 
@@ -459,9 +459,9 @@ fn screen_pixel_rel(l: *Lua) i32 {
 // @function screen_line
 fn screen_line(l: *Lua) i32 {
     check_num_args(l, 2);
-    const bx = l.checkInteger(1);
-    const by = l.checkInteger(2);
-    screen.line(@intCast(bx - 1), @intCast(by - 1));
+    const bx = l.checkNumber(1);
+    const by = l.checkNumber(2);
+    screen.line(@intFromFloat(bx - 1), @intFromFloat(by - 1));
     return 0;
 }
 
@@ -473,9 +473,9 @@ fn screen_line(l: *Lua) i32 {
 // @function screen_line_rel
 fn screen_line_rel(l: *Lua) i32 {
     check_num_args(l, 2);
-    const bx = l.checkInteger(1);
-    const by = l.checkInteger(2);
-    screen.line_rel(@intCast(bx), @intCast(by));
+    const bx = l.checkNumber(1);
+    const by = l.checkNumber(2);
+    screen.line_rel(@intFromFloat(bx), @intFromFloat(by));
     return 0;
 }
 
@@ -487,9 +487,9 @@ fn screen_line_rel(l: *Lua) i32 {
 // @function screen_rect
 fn screen_rect(l: *Lua) i32 {
     check_num_args(l, 2);
-    const w = l.checkInteger(1);
-    const h = l.checkInteger(2);
-    screen.rect(@intCast(w), @intCast(h));
+    const w = l.checkNumber(1);
+    const h = l.checkNumber(2);
+    screen.rect(@intFromFloat(w), @intFromFloat(h));
     l.setTop(0);
     return 0;
 }
@@ -502,9 +502,9 @@ fn screen_rect(l: *Lua) i32 {
 // @function screen_rect_fill
 fn screen_rect_fill(l: *Lua) i32 {
     check_num_args(l, 2);
-    const w = l.checkInteger(1);
-    const h = l.checkInteger(2);
-    screen.rect_fill(@intCast(w), @intCast(h));
+    const w = l.checkNumber(1);
+    const h = l.checkNumber(2);
+    screen.rect_fill(@intFromFloat(w), @intFromFloat(h));
     l.setTop(0);
     return 0;
 }
@@ -554,10 +554,10 @@ fn screen_text_right(l: *Lua) i32 {
 // @function screen_arc
 fn screen_arc(l: *Lua) i32 {
     check_num_args(l, 3);
-    const radius = l.checkInteger(1);
+    const radius = l.checkNumber(1);
     const theta_1 = l.checkNumber(2);
     const theta_2 = l.checkNumber(3);
-    screen.arc(@intCast(radius), theta_1, theta_2);
+    screen.arc(@intFromFloat(radius), theta_1, theta_2);
     l.setTop(0);
     return 0;
 }
@@ -569,8 +569,8 @@ fn screen_arc(l: *Lua) i32 {
 // @function screen_circle
 fn screen_circle(l: *Lua) i32 {
     check_num_args(l, 1);
-    const radius = l.checkInteger(1);
-    screen.circle(@intCast(radius));
+    const radius = l.checkNumber(1);
+    screen.circle(@intFromFloat(radius));
     l.setTop(0);
     return 0;
 }
@@ -582,8 +582,8 @@ fn screen_circle(l: *Lua) i32 {
 // @function screen_circle_fill
 fn screen_circle_fill(l: *Lua) i32 {
     check_num_args(l, 1);
-    const radius = l.checkInteger(1);
-    screen.circle_fill(@intCast(radius));
+    const radius = l.checkNumber(1);
+    screen.circle_fill(@intFromFloat(radius));
     l.setTop(0);
     return 0;
 }
@@ -598,10 +598,10 @@ fn screen_circle_fill(l: *Lua) i32 {
 // @function screen_color
 fn screen_color(l: *Lua) i32 {
     check_num_args(l, 4);
-    const r: u8 = @intCast(l.checkInteger(1));
-    const g: u8 = @intCast(l.checkInteger(2));
-    const b: u8 = @intCast(l.checkInteger(3));
-    const a: u8 = @intCast(l.checkInteger(4));
+    const r: u8 = @intFromFloat(l.checkNumber(1));
+    const g: u8 = @intFromFloat(l.checkNumber(2));
+    const b: u8 = @intFromFloat(l.checkNumber(3));
+    const a: u8 = @intFromFloat(l.checkNumber(4));
     screen.color(r, g, b, a);
     l.setTop(0);
     return 0;
