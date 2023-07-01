@@ -1,6 +1,12 @@
 -- Binary class
 -- @module params.Binary
 
+--[[
+  based on norns' params/binary.lua
+  norns params/binary.lua first committed by @andr-ew July 22, 2020
+  rewritten for seamstress by @ryleelyman June 26, 2023
+]]
+
 local binary = {}
 binary.__index = binary
 

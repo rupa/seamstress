@@ -1,5 +1,11 @@
 -- params menu
 
+--[[
+  based on the norn's params menu
+  norns params menu first committed by @artfwo April 8, 2018
+  reimagined for seamstress by @dndrks June 26, 2023
+]]
+
 local mEDIT = 1
 
 local paramsWindow = 2

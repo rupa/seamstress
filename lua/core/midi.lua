@@ -1,6 +1,12 @@
 --- midi
 -- @module midi
 
+--[[
+  based on norns' midi.lua
+  norns midi.lua first committed by @artfwo March 4, 2018
+  rewritten for seamstress by @ryleelyman June 12, 2023
+]]
+
 --- midi device (input or output)
 -- @type midi
 local Midi = {}

@@ -1,5 +1,11 @@
 --- screen
 -- @module screen
+
+--[[
+  inspired by norns' screen.lua (and isms by @tehn)
+  norns screen.lua first committed by @tehn Jan 30, 2018
+  writen for seamstress by @ryleelyman May 31, 2023
+]]
 local Screen = {}
 Screen.__index = Screen
 

@@ -1,6 +1,12 @@
 --- grid
 -- @module grid
 
+--[[
+  based on norns' grid.lua
+  norns grid.lua first committed by @catfact March 14, 2017
+  rewritten for seamstress by @ryleelyman April 30, 2023
+]]
+
 --- grid object
 -- @type grid
 local Grid = {}

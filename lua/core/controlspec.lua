@@ -1,6 +1,12 @@
 --- ControlSpec
 -- @module controlspec
 
+--[[
+  based on norns' controlspec.lua
+  norns controlspec.lua first committed by @tehn April 8, 2018
+  rewritten for seamstress by @dndrks June 26, 2023
+]]
+
 local util = require 'lib/util'
 
 local LinearWarp = {}

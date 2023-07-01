@@ -1,6 +1,12 @@
 --- clock coroutines
 -- @module clock
 
+--[[
+  based on norns' clock.lua
+  norns clock.lua first committed by @artfwo April 11, 2019
+  rewritten for seamstress by @ryleelyman June 16, 2023
+]]--
+
 local clock = {}
 local SCHEDULE_SLEEP = 0
 local SCHEDULE_SYNC = 1

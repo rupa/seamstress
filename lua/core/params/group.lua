@@ -1,6 +1,12 @@
 -- Group class
 -- @module params.group
 
+--[[
+  based on norns' params/group.lua
+  norns params/group.lua first committed by @tehn March 19, 2020
+  rewritten for seamstress by @dndrks June 26, 2023
+]]
+
 local Group = {}
 Group.__index = Group
 

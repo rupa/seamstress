@@ -1,6 +1,12 @@
 --- Arc
 --- @module arc
 
+--[[
+  based on norns' arc.lua
+  norns arc.lua first committed by @artfwo, @scanner-darkly and @okyeron November 15, 2018
+  rewritten for seamstress by @ryleelyman April 30, 2023
+]]
+
 --- arc object
 -- @type arc
 local Arc = {}

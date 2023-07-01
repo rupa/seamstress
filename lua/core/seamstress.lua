@@ -1,5 +1,11 @@
 --- startup file
 -- @script seamstress
+
+--[[
+  seamstress is inspired by monome's norns.
+  first commit by @ryleelyman April 30, 2023
+]]
+
 grid = require 'core/grid'
 arc = require 'core/arc'
 osc = require 'core/osc'

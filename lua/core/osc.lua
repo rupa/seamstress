@@ -1,5 +1,12 @@
 --- osc
 -- @module osc
+
+--[[
+  based on norns' osc.lua
+  norns osc.lua first committed by @artfwo April 17, 2018
+  rewritten for seamstress by @ryleelyman April 30, 2023
+]]
+
 local OSC = {}
 
 OSC.__index = OSC

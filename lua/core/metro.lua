@@ -1,6 +1,12 @@
 --- metro
 -- @module metro
 
+--[[
+  based on norns' metro.lua
+  norns metro.lua first committed by @tehn November 20, 2017
+  rewritten for seamstress by @ryleelyman June 2, 2023
+]]
+
 --- metro object class
 -- @type metro
 local Metro = {}

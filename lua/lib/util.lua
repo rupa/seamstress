@@ -1,12 +1,19 @@
 --- random utils
 -- @module util
-local Util = {}
+
+--[[
+  based on norns' util.lua
+  norns util.lua first committed by @tehn March 23, 2018
+  rewritten for seamstress by @ryleelyman April 30, 2023
+]]
+
+local util = {}
 
 --- check whether a file exists
 -- @tparam string name filename
 -- @treturn bool true if the file exists
 -- @function util.exists
-function Util.exists(name)
+function util.exists(name)
   local f = io.open(name, 'r')
   if f ~= nil then
     io.close(f)
@@ -16,12 +23,98 @@ function Util.exists(name)
   end
 end
 
+--- norns compat
+function util.file_exists(name)
+  return util.exists(name)
+end
+
+--- get system time in fractional seconds
+-- @return time
+util.time = function()
+  return _seamstress.get_time()
+end
+
+--- scan directory, return file list.
+-- @tparam string directory path to directory
+-- @treturn table
+util.scandir = function(directory)
+  local i, t, popen = 0, {}, io.popen
+  local pfile = popen('ls -pL --group-directories-first "'..directory..'"')
+  for filename in pfile:lines() do
+    i = i + 1
+    t[i] = filename
+  end
+  pfile:close()
+  return t
+end
+
+--- query file size.
+-- @tparam string name filepath
+-- @treturn number filesize in bytes
+util.file_size = function(path)
+  if path ~= nil then
+    local f = io.open(path,"r")
+    if f~=nil then
+      local s = f:seek("end") -- get file size
+      io.close(f)
+      return s
+    else
+      error("no file found at "..path)
+    end
+  else
+    error("util.file_size requires a path")
+  end
+end
+
+--- make directory (with parents as needed).
+-- @tparam string path
+util.make_dir = function(path)
+  os.execute("mkdir -p " .. path)
+end
+
+
+--- execute os command, capture output.
+-- @tparam string cmd command
+-- @param raw raw output (omit for scrubbed)
+-- @return output
+util.os_capture = function(cmd, raw)
+  local f = assert(io.popen(cmd, 'r'))
+  local s = assert(f:read('*a'))
+  f:close()
+  if raw then return s end
+  s = string.gsub(s, '^%s+', '')
+  s = string.gsub(s, '%s+$', '')
+  s = string.gsub(s, '[\n\r]+', ' ')
+  return s
+end
+
+--- string begins with.
+-- @tparam string s string to examine
+-- @tparam string start string to search for
+-- @treturn boolean true or false
+util.string_starts = function(s,start)
+  return string.sub(s,1,string.len(start))==start
+end
+
+--- trim string to a display width
+-- @tparam string s string to trim
+-- @tparam number width maximum width
+-- @treturn string trimmed string
+util.trim_string_to_width = function(s, width)
+  if _seamstress.screen_get_text_size(s) > width then
+    while _seamstress.screen_get_text_size(s .. "...") > width do
+      s = string.gsub(s, "[^\128-\191][\128-\191]*$", "")
+    end
+    s = s .. "..."
+  end
+  return s
+end
 --- clamp values to min max.
 -- @tparam number n value
 -- @tparam number min minimum
 -- @tparam number max maximum
 -- @treturn number clamped value
-function Util.clamp(n, min, max)
+function util.clamp(n, min, max)
   return math.min(max, (math.max(n, min)))
 end
 
@@ -35,7 +128,7 @@ end
 -- @tparam number dhi upper limit of output range (must be non-zero and of the same sign as dlo)
 -- @tparam number f input to convert
 -- @treturn number
-function Util.linexp(slo, shi, dlo, dhi, f)
+function util.linexp(slo, shi, dlo, dhi, f)
   if f <= slo then
     return dlo
   elseif f >= shi then
@@ -52,7 +145,7 @@ end
 -- @tparam number dhi upper limit of output range
 -- @tparam number f input to convert
 -- @treturn number
-function Util.linlin(slo, shi, dlo, dhi, f)
+function util.linlin(slo, shi, dlo, dhi, f)
   if f <= slo then
     return dlo
   elseif f >= shi then
@@ -69,7 +162,7 @@ end
 -- @tparam number dhi upper limit of output range
 -- @tparam number f input to convert
 -- @treturn number
-function Util.explin(slo, shi, dlo, dhi, f)
+function util.explin(slo, shi, dlo, dhi, f)
   if f <= slo then
     return dlo
   elseif f >= shi then
@@ -86,7 +179,7 @@ end
 -- @tparam number dhi upper limit of output range (must be non-zero and of the same sign as dlo)
 -- @tparam number f input to convert
 -- @treturn number
-function Util.expexp(slo, shi, dlo, dhi, f)
+function util.expexp(slo, shi, dlo, dhi, f)
   if f <= slo then
     return dlo
   elseif f >= shi then
@@ -100,7 +193,7 @@ end
 -- @tparam number number a number
 -- @tparam number quant quantization
 -- @function util.round
-function Util.round(number, quant)
+function util.round(number, quant)
   if quant == 0 then
     return number
   else
@@ -110,8 +203,8 @@ end
 
 --- clear the terminal window
 -- @function util.clear_screen
-function Util.clear_screen()
-  Util.os_capture("clear")
+function util.clear_screen()
+  util.os_capture("clear")
 end
 
 --- execute OS command
@@ -119,7 +212,7 @@ end
 -- @tparam[opt] bool raw flag whether to clean up output
 -- @treturn string output from executing the command
 -- @function util.os_capture
-function Util.os_capture(cmd, raw)
+function util.os_capture(cmd, raw)
   local f = assert(io.popen(cmd, 'r'))
   local s = assert(f:read('*a'))
   f:close()
@@ -133,7 +226,7 @@ end
 -- @tparam string name
 -- @treturn string acronym
 -- @function util.acronym
-function Util.acronym(name)
+function util.acronym(name)
   name = name:gsub("[%w']+", function(word)
     if not word:find("%U") then return word end
     return word:sub(1, 1)
@@ -145,7 +238,7 @@ end
 -- @tparam number degrees
 -- @treturn number radians
 -- @function util.degs_to_rads
-function Util.degs_to_rads(degrees)
+function util.degs_to_rads(degrees)
   return degrees * (math.pi / 180)
 end
 
@@ -153,7 +246,7 @@ end
 -- @tparam number radians
 -- @treturn number degrees
 -- @function util.rads_to_degs
-function Util.rads_to_degs(radians)
+function util.rads_to_degs(radians)
   return radians * (180 / math.pi)
 end
 
@@ -163,7 +256,7 @@ end
 -- @tparam integer max
 -- @treturn integer cycled value
 -- @function util.wrap
-function Util.wrap(n, min, max)
+function util.wrap(n, min, max)
   if max < min then
     local temp = min
     min = max
@@ -177,4 +270,21 @@ function Util.wrap(n, min, max)
   return y + min
 end
 
-return Util
+--- wrap an integer to a positive min/max range but clamp the min
+-- @tparam integer n
+-- @tparam integer min
+-- @tparam integer max
+-- @treturn integer cycled value
+function util.wrap_max(n, min, max)
+  if max < min then
+    local temp = min
+    min = max
+    max = temp
+  end
+  if n < min then
+    return min
+  end
+  return util.wrap(n, min, max)
+end
+
+return util

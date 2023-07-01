@@ -1,6 +1,12 @@
 --- Control class
 -- @module params.control
 
+--[[
+  based on norns' params/control.lua
+  norns params/control.lua first committed by @tehn April 8, 2018
+  rewritten for seamstress by @dndrks June 26, 2023
+]]
+
 local ControlSpec = require 'core/controlspec'
 
 local Control = {}

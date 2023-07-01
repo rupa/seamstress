@@ -1,6 +1,12 @@
 -- Separator class
 -- @module params.separator
 
+--[[
+  based on norns' params/separator.lua
+  norns params/separator.lua committed by @artfwo May 8, 2018
+  rewritten for seamstress by @dndrks June 26, 2023
+]]
+
 local Separator = {}
 Separator.__index = Separator
 

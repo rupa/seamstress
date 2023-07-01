@@ -82,6 +82,7 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     register_seamstress("clock_schedule_sleep", ziglua.wrap(clock_schedule_sleep));
     register_seamstress("clock_schedule_sync", ziglua.wrap(clock_schedule_sync));
     register_seamstress("clock_cancel", ziglua.wrap(clock_cancel));
+    register_seamstress("get_time", ziglua.wrap(get_time));
 
     register_seamstress("quit_lvm", ziglua.wrap(quit_lvm));
 
@@ -856,6 +857,15 @@ fn clock_cancel(l: *Lua) i32 {
     if (idx < 0 or idx > 100) return 0;
     clock.cancel(@intCast(idx));
     return 0;
+}
+
+/// gets (fractional) time in seconds.
+// @function get_time
+fn get_time(l: *Lua) i32 {
+    check_num_args(l, 0);
+    const microseconds: f64 = @floatFromInt(std.time.microTimestamp());
+    l.pushNumber(microseconds / std.time.us_per_s);
+    return 1;
 }
 
 /// quits seamstress

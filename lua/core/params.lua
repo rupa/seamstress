@@ -1,6 +1,12 @@
 --- ParamSet class
 -- @module paramset
 
+--[[
+  based on norns' paramset.lua
+  norns paramset.lua first committed by @tehn April 9, 2018
+  rewritten for seamstress by @dndrks June 26, 2023
+]]
+
 local control = require 'core/params/control'
 local group = require 'core/params/group'
 local binary = require 'core/params/binary'
