@@ -22,7 +22,7 @@ const Fabric = struct {
         self.threads = try allocator.alloc(Clock, 100);
         var i: u8 = 0;
         while (i < 100) : (i += 1) {
-            self.threads[i] = Clock{};
+            self.threads[i] = .{};
         }
         set_tempo(120);
         self.lock = .{};
@@ -96,15 +96,17 @@ fn wait(nanoseconds: u64) void {
 }
 
 pub fn cancel(id: u8) void {
-    fabric.threads[id].inactive = true;
-    fabric.threads[id].delta = 0;
+    var clock = &fabric.threads[id];
+    clock.inactive = true;
+    clock.delta = 0;
 }
 
 pub fn schedule_sleep(id: u8, seconds: f64) void {
     fabric.lock.lock();
     const delta: u64 = @intFromFloat(seconds * std.time.ns_per_s);
-    fabric.threads[id].delta = delta;
-    fabric.threads[id].inactive = false;
+    var clock = &fabric.threads[id];
+    clock.delta = delta;
+    clock.inactive = false;
     fabric.lock.unlock();
 }
 
@@ -116,8 +118,9 @@ pub fn schedule_sync(id: u8, beat: f64, offset: f64) void {
     const next_tick = tick_sync - ticks_elapsed + offset;
     const tick: f64 = @floatFromInt(fabric.tick);
     const delta: u64 = @intFromFloat(next_tick * tick);
-    fabric.threads[id].delta = delta;
-    fabric.threads[id].inactive = false;
+    var clock = &fabric.threads[id];
+    clock.delta = delta;
+    clock.inactive = false;
     fabric.lock.unlock();
 }
 

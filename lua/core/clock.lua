@@ -5,7 +5,8 @@
   based on norns' clock.lua
   norns clock.lua first committed by @artfwo April 11, 2019
   rewritten for seamstress by @ryleelyman June 16, 2023
-]]--
+]]
+   --
 
 local clock = {}
 local SCHEDULE_SLEEP = 0
@@ -40,11 +41,11 @@ _seamstress.clock = {
   end
 }
 
-local clock_id_counter = 1
 local function new_id()
-  local id = clock_id_counter
-  clock_id_counter = clock_id_counter + 1
-  return id
+  for i = 1, 100 do
+    if _seamstress.clock.threads[i] == nil then return i end
+  end
+  error('no clocks free!')
 end
 
 --- create and start a coroutine.
@@ -55,9 +56,11 @@ end
 function clock.run(f, ...)
   local co = coroutine.create(f)
   local id = new_id()
-  _seamstress.clock.threads[id] = co
-  _seamstress.clock.resume(id, ...)
-  return id
+  if id then
+    _seamstress.clock.threads[id] = co
+    _seamstress.clock.resume(id, ...)
+    return id
+  end
 end
 
 --- stop a coroutine started by clock.run.
@@ -109,8 +112,8 @@ clock.set_source = function(source)
     _seamstress.clock_set_source(0)
   elseif source == "midi" then
     _seamstress.clock_set_source(1)
-  -- elseif source == "link" then
-  --   _seamstress.clock_set_source(2)
+    -- elseif source == "link" then
+    --   _seamstress.clock_set_source(2)
   else
     error("unknown clock source: " .. source)
   end
