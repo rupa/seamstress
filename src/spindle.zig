@@ -11,7 +11,8 @@ const clock = @import("clock.zig");
 const screen = @import("screen.zig");
 const metro = @import("metros.zig");
 const ziglua = @import("ziglua");
-const c = @import("input.zig").c;
+const input = @import("input.zig");
+const c = input.c;
 
 const Lua = ziglua.Lua;
 var lvm: Lua = undefined;
@@ -1114,15 +1115,19 @@ pub fn clock_transport(ev_type: clock.Transport) !void {
 // lua interpreter
 
 fn lua_print(l: *Lua) i32 {
-    _ = c.rl_set_prompt("");
-    _ = c.rl_redisplay();
+    if (input.readline) {
+        _ = c.rl_set_prompt("");
+        _ = c.rl_redisplay();
+    }
     const n = l.getTop();
     l.checkStackErr(2, "too many results to print");
     _ = l.getGlobal("_old_print") catch unreachable;
     l.insert(1);
     l.call(n, 0);
-    _ = c.rl_set_prompt("> ");
-    _ = c.rl_redisplay();
+    if (input.readline) {
+        _ = c.rl_set_prompt("> ");
+        _ = c.rl_redisplay();
+    }
     return 0;
 }
 
@@ -1194,24 +1199,28 @@ fn handle_line(l: *Lua, line: [:0]const u8) !void {
         _ = b;
         if (try statement(l)) {
             l.setTop(0);
-            _ = c.rl_set_prompt(">... ");
+            if (input.readline) _ = c.rl_set_prompt(">... ");
             return;
         }
     } else {
         add_return(l) catch |err| {
             if (err == error.Syntax and try statement(l)) {
                 l.setTop(0);
-                _ = c.rl_set_prompt(">... ");
+                if (input.readline) _ = c.rl_set_prompt(">... ");
                 return;
             }
         };
     }
-    _ = c.rl_set_prompt("");
-    _ = c.rl_redisplay();
+    if (input.readline) {
+        _ = c.rl_set_prompt("");
+        _ = c.rl_redisplay();
+    }
     try docall(l, 0, ziglua.mult_return);
     if (l.getTop() == 0) {
-        _ = c.rl_set_prompt("> ");
-        _ = c.rl_redisplay();
+        if (input.readline) {
+            _ = c.rl_set_prompt("> ");
+            _ = c.rl_redisplay();
+        }
     } else {
         _ = lua_print(l);
     }
