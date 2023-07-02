@@ -14,7 +14,7 @@ var HEIGHT: u16 = 128;
 var ZOOM: u16 = 4;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.screen);
-pub var pending: usize = 0;
+pub var pending: i32 = 0;
 var missed: usize = 0;
 
 const Gui = struct {
