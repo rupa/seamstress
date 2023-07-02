@@ -218,7 +218,7 @@ pub fn handle_add(
     const port = argv[2].*.i;
     add(id, dev_t, port);
     const unwound_path = unwrap_string(path);
-    if (std.mem.eql(u8, "/serialosc/add", unwound_path)) osc.send_notify();
+    if (std.mem.eql(u8, "/serialosc/add", unwound_path[0..14])) osc.send_notify();
     return 0;
 }
 
@@ -237,6 +237,7 @@ pub fn handle_remove(
     _ = path;
     const id = unwrap_string(&argv[0].*.s);
     remove(id);
+    osc.send_notify();
     return 0;
 }
 
@@ -280,14 +281,15 @@ fn handle_size(
     _ = argc;
     _ = types;
     _ = path;
-    const i: *u8 = @ptrCast(user_data);
-    devices[i.*].cols = @intCast(argv[0].*.i);
-    devices[i.*].rows = @intCast(argv[1].*.i);
-    devices[i.*].quads = (devices[i.*].cols * devices[i.*].rows) / 64;
-    if (!devices[i.*].connected) {
-        devices[i.*].connected = true;
+    const ptr: *u8 = @ptrCast(user_data);
+    const i = ptr.*;
+    devices[i].cols = @intCast(argv[0].*.i);
+    devices[i].rows = @intCast(argv[1].*.i);
+    devices[i].quads = (devices[i].cols * devices[i].rows) / 64;
+    if (!devices[i].connected) {
+        devices[i].connected = true;
         const event = .{
-            .Monome_Add = .{ .dev = &devices[i.*] },
+            .Monome_Add = .{ .dev = &devices[i] },
         };
         events.post(event);
     }
@@ -306,10 +308,11 @@ fn handle_grid_key(
     _ = argc;
     _ = types;
     _ = path;
-    const i: *u8 = @ptrCast(user_data);
+    const ptr: *u8 = @ptrCast(user_data);
+    const i = ptr.*;
     const event = .{
         .Grid_Key = .{
-            .id = i.*,
+            .id = i,
             .x = argv[0].*.i,
             .y = argv[1].*.i,
             .state = argv[2].*.i,
@@ -331,10 +334,11 @@ fn handle_arc_key(
     _ = argc;
     _ = types;
     _ = path;
-    const i: *u8 = @ptrCast(user_data);
+    const ptr: *u8 = @ptrCast(user_data);
+    const i = ptr.*;
     const event = .{
         .Arc_Key = .{
-            .id = i.*,
+            .id = i,
             .ring = argv[0].*.i,
             .state = argv[1].*.i,
         },
@@ -355,10 +359,11 @@ fn handle_delta(
     _ = argc;
     _ = types;
     _ = path;
-    const i: *u8 = @ptrCast(user_data);
+    const ptr: *u8 = @ptrCast(user_data);
+    const i = ptr.*;
     const event = .{
         .Arc_Encoder = .{
-            .id = i.*,
+            .id = i,
             .ring = argv[0].*.i,
             .delta = argv[1].*.i,
         },
@@ -379,10 +384,11 @@ fn handle_tilt(
     _ = argc;
     _ = types;
     _ = path;
-    const i: *u8 = @ptrCast(user_data);
+    const ptr: *u8 = @ptrCast(user_data);
+    const i = ptr.*;
     const event = .{
         .Grid_Tilt = .{
-            .id = i.*,
+            .id = i,
             .sensor = argv[0].*.i,
             .x = argv[1].*.i,
             .y = argv[2].*.i,
