@@ -9,7 +9,7 @@ const Metro = struct {
     status: Status = .Stopped,
     seconds: f64 = 1.0,
     id: u8,
-    hot: bool = true,
+    pending: i32 = 0,
     missed: usize = 0,
     count: i64 = -1,
     stage: i64 = 0,
@@ -31,10 +31,10 @@ const Metro = struct {
         self.thread = null;
     }
     fn bang(self: *Metro) void {
-        if (self.hot) {
+        if (self.pending < 100) {
             const event = .{ .Metro = .{ .id = self.id, .stage = self.stage } };
             events.post(event);
-            self.hot = false;
+            self.pending += 1;
         } else self.missed += 1;
     }
     fn init(self: *Metro, delta: u64, count: i64) !void {
@@ -102,7 +102,7 @@ pub fn init(alloc_pointer: std.mem.Allocator) !void {
 }
 
 pub fn set_hot(idx: u8) void {
-    metros[idx].hot = true;
+    metros[idx].pending -= 1;
 }
 
 pub fn deinit() void {
