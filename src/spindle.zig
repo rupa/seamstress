@@ -18,6 +18,7 @@ const Lua = ziglua.Lua;
 var lvm: Lua = undefined;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.spindle);
+var stdout = std.io.getStdOut().writer();
 
 pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Allocator) !void {
     allocator = alloc_pointer;
@@ -1127,6 +1128,8 @@ fn lua_print(l: *Lua) i32 {
     if (input.readline) {
         _ = c.rl_set_prompt("> ");
         _ = c.rl_redisplay();
+    } else {
+        stdout.print("> ", .{});
     }
     return 0;
 }
@@ -1199,14 +1202,22 @@ fn handle_line(l: *Lua, line: [:0]const u8) !void {
         _ = b;
         if (try statement(l)) {
             l.setTop(0);
-            if (input.readline) _ = c.rl_set_prompt(">... ");
+            if (input.readline) {
+                _ = c.rl_set_prompt(">... ");
+            } else {
+                stdout.print(">... ", .{});
+            }
             return;
         }
     } else {
         add_return(l) catch |err| {
             if (err == error.Syntax and try statement(l)) {
                 l.setTop(0);
-                if (input.readline) _ = c.rl_set_prompt(">... ");
+                if (input.readline) {
+                    _ = c.rl_set_prompt(">... ");
+                } else {
+                    stdout.print(">... ", .{});
+                }
                 return;
             }
         };
@@ -1220,6 +1231,8 @@ fn handle_line(l: *Lua, line: [:0]const u8) !void {
         if (input.readline) {
             _ = c.rl_set_prompt("> ");
             _ = c.rl_redisplay();
+        } else {
+            stdout.print("> ", .{});
         }
     } else {
         _ = lua_print(l);

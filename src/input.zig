@@ -76,15 +76,11 @@ fn bare_input_run() !void {
     var fds = [1]std.os.pollfd{
         .{ .fd = 0, .events = std.os.POLL.IN, .revents = 0 },
     };
-    var print_prompt = true;
+    stdout.print("> ", .{});
     var buf: [1024]u8 = undefined;
     while (!quit) {
-        if (print_prompt) try stdout.print("> ", .{});
         const data = try std.os.poll(&fds, 1);
-        if (data == 0) {
-            print_prompt = false;
-            continue;
-        }
+        if (data == 0) continue;
         const len = stdin.read(&buf) catch break;
         if (len == 0) break;
         if (len >= buf.len - 1) {
@@ -101,7 +97,6 @@ fn bare_input_run() !void {
             .Exec_Code_Line = .{ .line = line },
         };
         events.post(event);
-        print_prompt = true;
     }
     events.post(.{ .Quit = {} });
 }
