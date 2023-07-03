@@ -1129,7 +1129,7 @@ fn lua_print(l: *Lua) i32 {
         _ = c.rl_set_prompt("> ");
         _ = c.rl_redisplay();
     } else {
-        stdout.print("> ", .{});
+        stdout.print("> ", .{}) catch unreachable;
     }
     return 0;
 }
@@ -1205,7 +1205,7 @@ fn handle_line(l: *Lua, line: [:0]const u8) !void {
             if (input.readline) {
                 _ = c.rl_set_prompt(">... ");
             } else {
-                stdout.print(">... ", .{});
+                try stdout.print(">... ", .{});
             }
             return;
         }
@@ -1216,7 +1216,7 @@ fn handle_line(l: *Lua, line: [:0]const u8) !void {
                 if (input.readline) {
                     _ = c.rl_set_prompt(">... ");
                 } else {
-                    stdout.print(">... ", .{});
+                    try stdout.print(">... ", .{});
                 }
                 return;
             }
@@ -1232,7 +1232,7 @@ fn handle_line(l: *Lua, line: [:0]const u8) !void {
             _ = c.rl_set_prompt("> ");
             _ = c.rl_redisplay();
         } else {
-            stdout.print("> ", .{});
+            try stdout.print("> ", .{});
         }
     } else {
         _ = lua_print(l);

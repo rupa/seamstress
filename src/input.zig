@@ -76,7 +76,7 @@ fn bare_input_run() !void {
     var fds = [1]std.os.pollfd{
         .{ .fd = 0, .events = std.os.POLL.IN, .revents = 0 },
     };
-    stdout.print("> ", .{});
+    try stdout.print("> ", .{});
     var buf: [1024]u8 = undefined;
     while (!quit) {
         const data = try std.os.poll(&fds, 1);
