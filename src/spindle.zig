@@ -906,8 +906,8 @@ pub fn osc_event(
     msg: []osc.Lo_Arg,
 ) !void {
     try push_lua_func("osc", "event");
-    var path_copy = try allocator.allocSentinel(u8, path.len, 0);
-    std.mem.copyForwards(u8, path_copy, path);
+    const path_copy = try allocator.dupeZ(u8, path);
+    defer allocator.free(path_copy);
     _ = lvm.pushString(path_copy);
     lvm.createTable(@intCast(msg.len), 0);
     var i: usize = 0;
@@ -948,16 +948,15 @@ pub fn osc_event(
     }
 
     lvm.createTable(2, 0);
-    var host_copy = try allocator.allocSentinel(u8, from_host.len, 0);
-    std.mem.copyForwards(u8, host_copy, from_host);
+    const host_copy = try allocator.dupeZ(u8, from_host);
+    defer allocator.free(host_copy);
     _ = lvm.pushString(host_copy);
     lvm.rawSetIndex(-2, 1);
-    var port_copy = try allocator.allocSentinel(u8, from_port.len, 0);
-    std.mem.copyForwards(u8, port_copy, from_port);
+    const port_copy = try allocator.dupeZ(u8, from_port);
+    defer allocator.free(port_copy);
     _ = lvm.pushString(port_copy);
     lvm.rawSetIndex(-2, 2);
-
-    // report(lvm, docall(lvm, 3, 0));
+    try docall(&lvm, 3, 0);
 }
 
 pub fn monome_add(dev: *monome.Monome) !void {
