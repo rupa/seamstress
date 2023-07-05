@@ -62,7 +62,6 @@ pub fn main() !void {
 
     logger.info("init spindle", .{});
     try spindle.init(prefix, config, allocator);
-    defer spindle.deinit();
 
     logger.info("init MIDI", .{});
     try midi.init(allocator);
@@ -93,6 +92,7 @@ pub fn main() !void {
 
     logger.info("spinning spindle", .{});
     try spindle.startup(args.script_file);
+    defer spindle.deinit();
 
     logger.info("entering main loop", .{});
     try events.loop();
