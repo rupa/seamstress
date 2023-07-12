@@ -25,6 +25,14 @@ git submodule update --init --recursive
 sudo zig build install -p /usr/local -Doptimize=ReleaseFast
 ```
 
+if you get an error about `lua.h` not being found, try this
+```bash
+pushd lib/ziglua
+zig build
+popd
+```
+and then retry the `sudo zig build` step above.
+
 ## usage
 
 invoke `seamstress` from the terminal.
