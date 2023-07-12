@@ -2,7 +2,6 @@ const std = @import("std");
 const ziglua = @import("lib/ziglua/build.zig");
 
 pub fn build(b: *std.Build) void {
-    b.install_prefix = "/usr/local";
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const exe = b.addExecutable(.{
@@ -11,14 +10,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    if (target.isDarwin()) {
-        exe.addIncludePath("/opt/homebrew/include");
-        exe.addIncludePath("/opt/homebrew/opt/readline/include");
-        exe.addLibraryPath("/opt/homebrew/lib");
-        exe.addLibraryPath("/opt/homebrew/opt/readline/lib");
-    }
-
     b.installArtifact(exe);
+    exe.addIncludePath("lib/ziglua/zig-out/include/lua");
+    exe.addIncludePath("lib/readline/zig-out/include/readline");
+    exe.addIncludePath("lib/readline/zig-out/include");
+    exe.addIncludePath("lib/liblo/zig-out/include");
+
     const install_lua_files = b.addInstallDirectory(.{
         .source_dir = .{ .path = "lua" },
         .install_dir = .{ .custom = "share/seamstress" },
@@ -32,15 +29,41 @@ pub fn build(b: *std.Build) void {
     b.getInstallStep().dependOn(&install_font.step);
     b.getInstallStep().dependOn(&install_lua_files.step);
 
-    // if (target.isLinux()) {
-    //     exe.linkSystemLibrary("dns_sd");
-    // }
-    exe.linkSystemLibrary("LIBLO");
-    exe.linkSystemLibrary("SDL2");
-    exe.linkSystemLibrary("SDL2_ttf");
-    exe.linkSystemLibrary("rtmidi");
-    exe.linkSystemLibrary("readline");
-    exe.addModule("ziglua", ziglua.compileAndCreateModule(b, exe, .{}));
+    const zig_sdl = b.dependency("SDL", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.linkLibrary(zig_sdl.artifact("SDL2"));
+    exe.linkLibrary(zig_sdl.artifact("SDL2_ttf"));
+
+    const zig_lua = b.dependency("Lua", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.addModule("ziglua", zig_lua.module("ziglua"));
+    exe.linkLibrary(zig_lua.artifact("lua"));
+
+    const zig_readline = b.dependency("readline", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.linkLibrary(zig_readline.artifact("readline"));
+    exe.linkSystemLibrary("ncurses");
+
+    const zig_liblo = b.dependency("liblo", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.linkLibrary(zig_liblo.artifact("liblo"));
+
+    exe.addIncludePath("/opt/homebrew/include");
+
+    const zig_rtmidi = b.dependency("rtmidi", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.linkLibrary(zig_rtmidi.artifact("rtmidi"));
+
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {

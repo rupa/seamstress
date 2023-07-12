@@ -108,7 +108,7 @@ fn osc_receive(
     argv: [*c][*c]c.lo_arg,
     argc: c_int,
     msg: c.lo_message,
-    user_data: c.lo_message,
+    user_data: ?*anyopaque,
 ) callconv(.C) c_int {
     _ = user_data;
     const arg_size = @as(usize, @intCast(argc));
@@ -132,8 +132,8 @@ fn osc_receive(
             c.LO_BLOB => {
                 const arg = argv[i];
                 message[i] = Lo_Arg{ .Lo_Blob = Lo_Blob_t{
-                    .dataptr = c.lo_blob_dataptr(arg),
-                    .datasize = @as(i32, @intCast(c.lo_blob_datasize(arg))),
+                    .dataptr = c.lo_blob_dataptr(@as(c.lo_blob, @ptrCast(arg))),
+                    .datasize = @as(i32, @intCast(c.lo_blob_datasize(@as(c.lo_blob, @ptrCast(arg))))),
                 } };
             },
             c.LO_INT64 => {
