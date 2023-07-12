@@ -12,6 +12,8 @@ requires `freetype2`, `harfbuzz` and `ncurses`. on macOS do
 brew install freetype2 harfbuzz ncurses
 ```
 
+on linux, additional requirements include `alsa`.
+
 building from source requires the master build of [zig](https://github.com/ziglang/zig).
 download a binary from [here](https://ziglang.org/download/) and add it to your PATH.
 currently the earliest zig supported is `0.11.0-dev.3859`.
@@ -21,18 +23,6 @@ to build, invoke
 ```bash
 git submodule update --init --recursive
 sudo zig build install -p /usr/local -Doptimize=ReleaseFast
-```
-
-If you get compile errors complaining about not being able to find header files,
-you may need to do the following once
-
-```bash
-pushd lib/readline
-zig build
-popd
-pushd lib/ziglua
-zig build
-popd
 ```
 
 ## usage
