@@ -6,10 +6,10 @@ currently beta software.
 
 ## installation
 
-requires `freetype2`, `harfbuzz` and `ncurses`. on macOS do
+requires `freetype2`, `harfbuzz`, `pkg-config` and `ncurses`. on macOS do
 
 ```bash
-brew install freetype2 harfbuzz ncurses
+brew install freetype2 harfbuzz ncurses pkg-config
 ```
 
 on linux, additional requirements include `alsa`.
