@@ -10,6 +10,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const t = exe.target_info.target;
     b.installArtifact(exe);
     exe.addIncludePath("lib/ziglua/zig-out/include/lua");
     exe.addIncludePath("lib/readline/zig-out/include/readline");
@@ -56,7 +57,10 @@ pub fn build(b: *std.Build) void {
     });
     exe.linkLibrary(zig_liblo.artifact("liblo"));
 
-    exe.addIncludePath("/opt/homebrew/include");
+    if (t.os.tag == .macos) {
+        exe.addIncludePath("/opt/homebrew/opt/freetype2/include/freetype2");
+        exe.addIncludePath("/opt/homebrew/opt/freetype/include/freetype2");
+    }
 
     const zig_rtmidi = b.dependency("rtmidi", .{
         .target = target,
