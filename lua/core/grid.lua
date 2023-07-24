@@ -29,8 +29,8 @@ for i = 1, 4 do
     rotation = vport.wrap('rotation'),
     intensity = vport.wrap('intensity'),
     tilt_enable = vport.wrap('tilt_enable'),
-    cols = vport.wrap('cols'),
-    rows = vport.wrap('rows')
+    cols = 0,
+    rows = 0,
   }
 end
 
@@ -44,8 +44,8 @@ function Grid.new(id, serial, name, dev)
   g.key = nil
   g.tilt = nil
   g.remove = nil
-  g.rows = nil
-  g.cols = nil
+  g.rows = _seamstress.grid_rows(dev)
+  g.cols = _seamstress.grid_cols(dev)
 
   for i = 1, 4 do
     if Grid.ports[i].name == g.name then
@@ -60,14 +60,6 @@ function Grid.new(id, serial, name, dev)
   end
 
   return g
-end
-
-function Grid:rows()
-  return _seamstress.grid_rows(self.dev)
-end
-
-function Grid:cols()
-  return _seamstress.grid_cols(self.dev)
 end
 
 --- callback called when a grid is plugged in;
@@ -155,9 +147,13 @@ function Grid.update_devices()
 
   for i = 1, 4 do
     Grid.ports[i].device = nil
+    Grid.ports[i].rows = 0
+    Grid.ports[i].cols = 0
     for _, device in pairs(Grid.devices) do
       if device.name == Grid.ports[i].name then
         Grid.ports[i].device = device
+        Grid.ports[i].rows = device.rows
+        Grid.ports[i].cols = device.cols
         device.port = i
       end
     end

@@ -285,7 +285,7 @@ fn handle_size(
     const i = ptr.*;
     devices[i].cols = @intCast(argv[0].*.i);
     devices[i].rows = @intCast(argv[1].*.i);
-    devices[i].quads = (devices[i].cols * devices[i].rows) / 64;
+    devices[i].quads = @intCast(@divExact(argv[0].*.i * argv[1].*.i, 64));
     if (!devices[i].connected) {
         devices[i].connected = true;
         const event = .{
