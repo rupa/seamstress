@@ -678,7 +678,7 @@ fn metro_start(l: *Lua) i32 {
     const idx: u8 = @intCast(l.checkInteger(1) - 1);
     const seconds = l.checkNumber(2);
     const count = l.checkInteger(3);
-    const stage = l.checkInteger(4);
+    const stage = l.checkInteger(4) - 1;
     metro.start(idx, seconds, count, stage) catch unreachable;
     l.setTop(0);
     return 0;
