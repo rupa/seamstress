@@ -69,9 +69,9 @@ pub fn start(idx: u8, seconds: f64, count: i64, stage: i64) !void {
     var metro = &metros[idx];
     metro.status_lock.lock();
     if (metro.status == Status.Running) {
+        metro.status_lock.unlock();
         metro.stop();
-    }
-    metro.status_lock.unlock();
+    } else metro.status_lock.unlock();
     if (seconds > 0.0) {
         metro.seconds = seconds;
     }
