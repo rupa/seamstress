@@ -6,23 +6,33 @@ currently beta software.
 
 ## installation
 
-requires `freetype2`, `harfbuzz`, `pkg-config` and `ncurses`. on macOS do
+seamstress requires `freetype2`, `harfbuzz` and `ncurses`. on macOS do
 
 ```bash
-brew install freetype2 harfbuzz ncurses pkg-config
+brew install freetype2 harfbuzz ncurses
 ```
 
 on linux, additional requirements include `alsa`.
+each release comes with a binary for `x86_64` linux and macOS,
+as well as `aarch64` (Apple silicon) macOS.
+download the appropriate file, unzip it and 
+(technically optionally) add it to your PATH.
+
+NB: `seamstress` expects the file structure found inside the zipped folder
+and will not work as expected if you move only the binary to a different folder.
+
+## building from source
+
 
 building seamstress from source requires the master build of [zig](https://github.com/ziglang/zig).
 the easiest way to get zig is to download a binary from [here](https://ziglang.org/download/) and add it to your PATH.
 currently the earliest zig supported is `0.11.0-dev.3859`.
 once zig 0.11 is released, seamstress will follow releases of zig, rather than the master.
-to build seamstress, invoke
+to build seamstress, install the dependencies listed above (as well as `pkg-config`) and invoke
 
 ```bash
 git submodule update --init --recursive
-sudo zig build install -p /usr/local -Doptimize=ReleaseFast
+zig build
 ```
 
 if you get an error about `lua.h` not being found, try this
@@ -31,7 +41,11 @@ pushd lib/ziglua
 zig build
 popd
 ```
-and then retry the `sudo zig build` step above.
+and then retry the `zig build` step above.
+
+NB: these commands build `seamstress` in Debug mode.
+you can change this 
+by passing `-Doptimize=ReleaseFast` or `-Doptimize=ReleaseSafe` to the build command.
 
 ## usage
 

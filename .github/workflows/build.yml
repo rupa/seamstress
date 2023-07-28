@@ -19,10 +19,10 @@ jobs:
           bash ci/ubuntu.sh
       - name: zip artifact
         run: |
-          cd zig-out/ && tar -czvf ../seamstress-linux-${{ github.ref_name }}.tar.gz .
+          cd zig-out/ && tar -czvf ../seamstress-linux-x86_64-${{ github.ref_name }}.tar.gz .
       - uses: actions/upload-artifact@v2
         with:
-          name: linux-${{ github.ref_name }}
+          name: linux-x86_64-${{ github.ref_name }}
           path: |
             ./*.tar.gz
   macos-x86_64:
