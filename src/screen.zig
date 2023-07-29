@@ -9,9 +9,6 @@ const c = @cImport({
     @cInclude("SDL2/SDL_video.h");
 });
 
-var WIDTH: u16 = 256;
-var HEIGHT: u16 = 128;
-var ZOOM: u16 = 4;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.screen);
 pub var pending: i32 = 0;
@@ -23,6 +20,9 @@ const Gui = struct {
     width: u16 = 256,
     height: u16 = 128,
     zoom: u16 = 4,
+    WIDTH: u16 = 256,
+    HEIGHT: u16 = 128,
+    ZOOM: u16 = 4,
     x: c_int = 0,
     y: c_int = 0,
 };
@@ -347,10 +347,43 @@ pub fn get_size() Size {
     };
 }
 
+pub fn set_size(width: i32, height: i32, zoom: i32) void {
+    const gui = &windows[current];
+    gui.WIDTH = @intCast(width);
+    gui.HEIGHT = @intCast(height);
+    gui.ZOOM = @intCast(zoom);
+    c.SDL_SetWindowSize(gui.window, width * zoom, height * zoom);
+    c.SDL_SetWindowMinimumSize(gui.window, width, height);
+    window_rect(gui);
+}
+
+pub fn set_fullscreen(is_fullscreen: bool) void {
+    const gui = windows[current];
+    if (is_fullscreen) {
+        sdl_call(
+            c.SDL_SetWindowFullscreen(gui.window, c.SDL_WINDOW_FULLSCREEN_DESKTOP),
+            "screen.set_fullscreen()",
+        );
+        window_rect(&windows[current]);
+    } else {
+        sdl_call(
+            c.SDL_SetWindowFullscreen(gui.window, 0),
+            "screen.set_fullscreen()",
+        );
+        set_size(gui.WIDTH, gui.HEIGHT, gui.ZOOM);
+    }
+    const event = .{
+        .Screen_Resized = .{
+            .w = gui.width,
+            .h = gui.height,
+            .window = current,
+        },
+    };
+    events.post(event);
+}
+
 pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources: []const u8) !void {
     allocator = alloc_pointer;
-    HEIGHT = height;
-    WIDTH = width;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) < 0) {
         logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
@@ -370,62 +403,38 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
         return error.Fail;
     };
 
-    var w = c.SDL_CreateWindow(
-        "seamstress",
-        c.SDL_WINDOWPOS_UNDEFINED,
-        c.SDL_WINDOWPOS_UNDEFINED,
-        WIDTH * ZOOM,
-        HEIGHT * ZOOM,
-        c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE,
-    );
-    var window = w orelse {
-        logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
-        return error.Fail;
-    };
-
-    var r = c.SDL_CreateRenderer(window, 0, 0);
-    var render = r orelse {
-        logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
-        return error.Fail;
-    };
-
-    c.SDL_SetWindowMinimumSize(window, WIDTH, HEIGHT);
-    windows[0] = .{
-        .window = window,
-        .render = render,
-        .zoom = ZOOM,
-    };
-    set(0);
-    window_rect(&windows[current]);
-    clear();
-    refresh();
-
-    w = c.SDL_CreateWindow(
-        "seamstress params",
-        c.SDL_WINDOWPOS_UNDEFINED,
-        c.SDL_WINDOWPOS_UNDEFINED,
-        WIDTH * ZOOM,
-        HEIGHT * ZOOM,
-        c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE,
-    );
-    window = w orelse {
-        logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
-        return error.Fail;
-    };
-    r = c.SDL_CreateRenderer(window, 0, 0);
-    render = r orelse {
-        logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
-        return error.Fail;
-    };
-    windows[1] = .{
-        .window = window,
-        .render = render,
-        .zoom = ZOOM,
-    };
-    set(1);
-    window_rect(&windows[current]);
-    clear();
-    refresh();
+    for (0..2) |i| {
+        var w = c.SDL_CreateWindow(
+            if (i == 0) "seamstress" else "seamstress_params",
+            0,
+            @intCast(i * height * 4),
+            width * 4,
+            height * 4,
+            c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE,
+        );
+        var window = w orelse {
+            logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
+            return error.Fail;
+        };
+        var r = c.SDL_CreateRenderer(window, 0, 0);
+        var render = r orelse {
+            logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
+            return error.Fail;
+        };
+        c.SDL_SetWindowMinimumSize(window, width, height);
+        windows[i] = .{
+            .window = window,
+            .render = render,
+            .zoom = 4,
+            .WIDTH = width,
+            .HEIGHT = height,
+            .ZOOM = 4,
+        };
+        set(i);
+        window_rect(&windows[current]);
+        clear();
+        refresh();
+    }
     set(0);
     thread = try std.Thread.spawn(.{}, loop, .{});
 }
@@ -437,8 +446,8 @@ fn window_rect(gui: *Gui) void {
     var yzoom: u16 = 1;
     const oldzoom = gui.zoom;
     c.SDL_GetWindowSize(gui.window, &xsize, &ysize);
-    while ((1 + xzoom) * WIDTH <= xsize) : (xzoom += 1) {}
-    while ((1 + yzoom) * HEIGHT <= ysize) : (yzoom += 1) {}
+    while ((1 + xzoom) * gui.WIDTH <= xsize) : (xzoom += 1) {}
+    while ((1 + yzoom) * gui.HEIGHT <= ysize) : (yzoom += 1) {}
     gui.zoom = if (xzoom < yzoom) xzoom else yzoom;
     const uxsize: u16 = @intCast(xsize);
     const uysize: u16 = @intCast(ysize);

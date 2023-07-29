@@ -67,6 +67,8 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     register_seamstress("screen_move_rel", ziglua.wrap(screen_move_rel));
     register_seamstress("screen_get_size", ziglua.wrap(screen_get_size));
     register_seamstress("screen_get_text_size", ziglua.wrap(screen_get_text_size));
+    register_seamstress("screen_set_size", ziglua.wrap(screen_set_size));
+    register_seamstress("screen_set_fullscreen", ziglua.wrap(screen_set_fullscreen));
 
     register_seamstress("metro_start", ziglua.wrap(metro_start));
     register_seamstress("metro_stop", ziglua.wrap(metro_stop));
@@ -663,6 +665,36 @@ fn screen_get_text_size(l: *Lua) i32 {
     l.pushInteger(ret.w);
     l.pushInteger(ret.h);
     return 2;
+}
+
+/// sets the size of the current window.
+// users should use `screen.set_size` instead
+// @see screen.set_size
+// @param width width in pixels
+// @param height height in pixels
+// @param zoom zoom factor
+// @function screen_set_size
+fn screen_set_size(l: *Lua) i32 {
+    check_num_args(l, 3);
+    const w: i32 = @intFromFloat(l.checkNumber(1));
+    const h: i32 = @intFromFloat(l.checkNumber(2));
+    const z: i32 = @intFromFloat(l.checkNumber(3));
+    screen.set_size(w, h, z);
+    l.setTop(0);
+    return 0;
+}
+
+/// sets the fullscreen state of the current window.
+// users should use `screen.set_fullscreen` instead
+// @see screen.set_fullscreen` instead
+// @param is_fullscreen boolean
+// @function screen_set_fullscreen
+fn screen_set_fullscreen(l: *Lua) i32 {
+    check_num_args(l, 1);
+    const is_fullscreen = l.toBoolean(1);
+    screen.set_fullscreen(is_fullscreen);
+    l.setTop(0);
+    return 0;
 }
 
 /// starts a new metro.

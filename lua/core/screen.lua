@@ -6,7 +6,12 @@
   norns screen.lua first committed by @tehn Jan 30, 2018
   writen for seamstress by @ryleelyman May 31, 2023
 ]]
-local Screen = {}
+local Screen = {
+  width = 256,
+  height = 128,
+  params_width = 256,
+  params_height = 128,
+}
 Screen.__index = Screen
 
 local keycodes = require("keycodes")
@@ -24,15 +29,15 @@ local current = 1
 -- @tparam integer value 1 (gui) or 2 (params)
 -- @function screen.set
 function Screen.set(value)
-  local old = current
-  local old_reset = Screen.reset
-  _seamstress.screen_set(value)
-  current = value
-  Screen.reset = function()
-    _seamstress.screen_set(old)
-    Screen.reset = old_reset
-    current = old
-  end
+	local old = current
+	local old_reset = Screen.reset
+	_seamstress.screen_set(value)
+	current = value
+	Screen.reset = function()
+		_seamstress.screen_set(old)
+		Screen.reset = old_reset
+		current = old
+	end
 end
 
 --- resets which screen will be affected by future screen calls.
@@ -54,7 +59,7 @@ function Screen.move(x, y)
 end
 
 --- move the current position with relative coordinates.
--- @tparam integer x relative target x-coordinate 
+-- @tparam integer x relative target x-coordinate
 -- @tparam integer y relative target y-coordinate
 -- @function screen.move_rel
 function Screen.move_rel(x, y)
@@ -94,7 +99,7 @@ function Screen.line(bx, by)
 end
 
 --- draws a line relative to the current coordinates.
--- @tparam integer bx target relative x-coordinate 
+-- @tparam integer bx target relative x-coordinate
 -- @tparam integer by target relative y-coordinate
 -- @function screen.line_rel
 function Screen.line_rel(bx, by)
@@ -170,7 +175,7 @@ end
 -- @treturn integer h height in pixels
 -- @function screen.get_text_size
 function Screen.get_text_size(text)
-  return _seamstress.screen_get_text_size(text)
+	return _seamstress.screen_get_text_size(text)
 end
 
 --- returns the size of the current window.
@@ -178,43 +183,64 @@ end
 -- @treturn integer h height in pixels
 -- @function screen.get_size
 function Screen.get_size()
-  return _seamstress.screen_get_size()
+	return _seamstress.screen_get_size()
+end
+
+--- sets the size of the current window
+-- @tparam integer w width in pixels
+-- @tparam integer h height in pixels
+-- @tparam integer z zoom factor
+function Screen.set_size(w, h, z)
+	_seamstress.screen_set_size(w, h, z or 4)
+end
+
+--- sets the fullscreen state of the current window
+-- @tparam bool is_fullscreen
+function Screen.set_fullscreen(is_fullscreen)
+	_seamstress.screen_set_fullscreen(is_fullscreen)
 end
 
 _seamstress.screen = {
-  key = function (symbol, modifiers, is_repeat, state, window)
-    local char = keycodes[symbol]
-    local mods = keycodes.modifier(modifiers)
-    if #mods == 1 and mods[1] == "ctrl" and char == "p" and state == 1 and window == 1 then
-      _seamstress.screen_show()
-    elseif #mods == 1 and mods[1] == "ctrl" and char == "c" and state == 1 then
-      _seamstress.quit_lvm()
-    elseif window == 2 then
-      paramsMenu.key(keycodes[symbol], keycodes.modifier(modifiers), is_repeat, state)
-    elseif Screen.key ~= nil then
-      Screen.key(keycodes[symbol], keycodes.modifier(modifiers), is_repeat, state)
+	key = function(symbol, modifiers, is_repeat, state, window)
+		local char = keycodes[symbol]
+		local mods = keycodes.modifier(modifiers)
+		if #mods == 1 and mods[1] == "ctrl" and char == "p" and state == 1 and window == 1 then
+			_seamstress.screen_show()
+		elseif #mods == 1 and mods[1] == "ctrl" and char == "c" and state == 1 then
+			_seamstress.quit_lvm()
+		elseif window == 2 then
+			paramsMenu.key(keycodes[symbol], keycodes.modifier(modifiers), is_repeat, state)
+		elseif Screen.key ~= nil then
+			Screen.key(keycodes[symbol], keycodes.modifier(modifiers), is_repeat, state)
+		end
+	end,
+	mouse = function(x, y, window)
+		if window == 2 then
+			paramsMenu.mouse(x, y)
+		elseif Screen.mouse ~= nil then
+			Screen.mouse(x, y)
+		end
+	end,
+	click = function(x, y, state, button, window)
+		if window == 2 then
+			paramsMenu.click(x, y, state, button)
+		elseif Screen.click ~= nil then
+			Screen.click(x, y, state, button)
+		end
+	end,
+	resized = function(x, y, window)
+    if window == 1 then
+      Screen.width = x
+      Screen.height = y
+      if Screen.resized ~= nil then
+        Screen.resized()
+      end
+    else
+      Screen.params_width = x
+      Screen.params_height = y
+      paramsMenu.redraw()
     end
-  end,
-  mouse = function(x, y, window)
-    if window == 2 then
-      paramsMenu.mouse(x, y)
-    elseif Screen.mouse ~= nil then
-      Screen.mouse(x, y)
-    end
-  end,
-  click = function(x, y, state, button, window)
-    if window == 2 then
-      paramsMenu.click(x, y, state, button)
-    elseif Screen.click ~= nil then
-      Screen.click(x, y, state, button)
-    end
-  end,
-  resized = function(x, y, window)
-    paramsMenu.redraw()
-    if Screen.resized ~= nil then
-      Screen.resized(x, y, window)
-    end
-  end,
+	end,
 }
 
 --- callback executed when the user types a key into the gui window.
@@ -240,10 +266,7 @@ function Screen.mouse(x, y) end
 function Screen.click(x, y, state, button) end
 
 --- callback executed when the user resizes a window
--- @tparam integer x new x size
--- @tparam integer y new y size
--- @tparam integer window 1 for the main window, 2 for the params window
 -- @function screen.resized
-function Screen.resized(x, y, window) end
+function Screen.resized() end
 
 return Screen
