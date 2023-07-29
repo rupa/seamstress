@@ -17,26 +17,25 @@ OSC.__index = OSC
 -- @tparam table args arguments from the OSC message
 -- @tparam {host,port} from table containing sender information
 -- @function osc.event
-function OSC.event(path, args, from)
-end
+function OSC.event(path, args, from) end
 
 --- send OSC message
 -- @tparam[opt] {host,port} to address (both strings)
 -- @tparam string path an osc path `/like/this`
 -- @tparam[opt] table args an array of arguments to the OSC message
 function OSC.send(to, path, args)
-  if not to then
-    to = {"localhost", _seamstress.remote_port}
-  end
-  _seamstress.osc_send(to, path, args)
+	if not to then
+		to = { "localhost", _seamstress.remote_port }
+	end
+	_seamstress.osc_send(to, path, args)
 end
 
 _seamstress.osc = {}
 
 function _seamstress.osc.event(path, args, from)
-  if OSC.event ~= nil then
-    OSC.event(path, args, from)
-  end
+	if OSC.event ~= nil then
+		OSC.event(path, args, from)
+	end
 end
 
 return OSC
