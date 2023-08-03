@@ -3,7 +3,7 @@ name: Build artifacts
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - '*'
 
   workflow_dispatch:
 
