@@ -4,6 +4,7 @@ mkdir /opt/zig
 wget https://ziglang.org/builds/zig-linux-x86_64-0.11.0-dev.3971+6bc9c4f71.tar.xz
 tar -xf zig-linux-x86_64-0.11.0-dev.3971+6bc9c4f71.tar.xz -C /tmp
 cp -R /tmp/zig-linux-x86_64-0.11.0-dev.3971+6bc9c4f71/* /opt/zig
+sudo apt-get update
 sudo apt-get install \
      libncurses-dev libasound2-dev libfreetype-dev \
      libharfbuzz-dev libudev-dev libsamplerate0-dev \
