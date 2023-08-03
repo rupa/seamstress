@@ -12,7 +12,7 @@ local LFO = {}
 LFO.__index = LFO
 
 local lfo_rates =
-	{ 1 / 16, 1 / 8, 1 / 4, 5 / 16, 1 / 3, 3 / 8, 1 / 2, 3 / 4, 1, 1.5, 2, 3, 4, 6, 8, 16, 32, 64, 128, 256, 512, 1024 }
+	{ 1 / 16, 1 / 8, 1 / 4, 5 / 16, 1 / 3, 3 / 8, 1 / 2, 3 / 4, 1, 1.5, 2, 3, 4, 6, 8, 16, 32, 64, 128, 256, 512, 1024, }
 local lfo_rates_as_strings = {
 	"1/16",
 	"1/8",
@@ -91,13 +91,14 @@ end
 
 --- construct an LFO via table arguments
 -- eg. my_lfo:add{shape = 'sine', min = 200, max = 12000}
--- @tparam string shape The shape for this LFO (options: 'sine','saw','square','random'; default: 'sine')
--- @tparam number min The minimum bound for this LFO (default: 0)
--- @tparam number max The maximum bound for this LFO (default: 1)
--- @tparam number depth The depth of modulation between min/max (range: 0.0 to 1.0; default: 0.0)
--- @tparam string mode How to advance the LFO (options: 'clocked', 'free'; default: 'clocked')
--- @tparam number period The timing of this LFO's advancement. If mode is 'clocked', argument is in beats. If mode is 'free', argument is in seconds.
--- @tparam function action A callback function to perform as the LFO advances. This library passes both the scaled and the raw value to the callback function.
+-- @param args a table of arguments.
+-- - shape The shape for this LFO (options: 'sine','saw','square','random'; default: 'sine')
+-- - min The minimum bound for this LFO (default: 0)
+-- - max The maximum bound for this LFO (default: 1)
+-- - depth The depth of modulation between min/max (range: 0.0 to 1.0; default: 0.0)
+-- - mode How to advance the LFO (options: 'clocked', 'free'; default: 'clocked')
+-- - period The timing of this LFO's advancement. If mode is 'clocked', argument is in beats. If mode is 'free', argument is in seconds.
+-- - action A callback function to perform as the LFO advances. This library passes both the scaled and the raw value to the callback function.
 function LFO:add(args)
 	local shape = args.shape == nil and "sine" or args.shape
 	local min = args.min == nil and 0 or args.min
@@ -415,7 +416,7 @@ end
 -- @tparam string id The parameter ID to use for this LFO.
 -- @tparam[opt] string separator A separator name for the LFO parameters.
 -- @tparam[opt] string group A group name for the LFO parameters.
-function LFO:add_params(id, sep, group)
+function LFO:add_params(id, separator, group)
 	if id ~= nil then
 		if params.lookup["lfo_" .. id] == nil then
 			if group then

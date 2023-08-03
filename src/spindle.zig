@@ -670,11 +670,11 @@ fn screen_quad(l: *Lua) i32 {
 }
 
 /// creates and returns a new texture
-// users should use `screen.Texture.new` instead
+// users should use `screen.new_texture` instead
 // @param width width in pixels
 // @param height height in pixels
 // @return texture opaque pointer to texture
-// @see screen.Texture.new
+// @see screen.new_texture
 // @function screen_new_texture
 fn screen_new_texture(l: *Lua) i32 {
     check_num_args(l, 2);
@@ -692,10 +692,9 @@ fn screen_new_texture(l: *Lua) i32 {
 }
 
 /// renders texture at given coordinates
-// users shoul use `screen.Texture:render` instead
+// users shoul use `screen.Texture.render` instead
 // @param x x-coordinate
 // @param y y-coordinate
-// @see screen.Texture:render
 // @function screen_render_texture
 fn screen_render_texture(l: *Lua) i32 {
     check_num_args(l, 3);
@@ -705,14 +704,13 @@ fn screen_render_texture(l: *Lua) i32 {
     screen.render_texture(texture, @intFromFloat(x), @intFromFloat(y));
     return 0;
 }
-/// renders texture at given coordinates
-// users shoul use `screen.Texture:render` instead
+/// renders texture at given coordinates with rotation and flip
+// users shoul use `screen.Texture.render_extended` instead
 // @param x x-coordinate
 // @param y y-coordinate
 // @param theta angle in radians
 // @param flip_h flip horizontally if true
 // @param flip_v flip vertically if true
-// @see screen.Texture:render
 // @function screen_render_texture_extended
 fn screen_render_texture_extended(l: *Lua) i32 {
     check_num_args(l, 6);
@@ -944,7 +942,7 @@ fn screen_set_size(l: *Lua) i32 {
 
 /// sets the fullscreen state of the current window.
 // users should use `screen.set_fullscreen` instead
-// @see screen.set_fullscreen` instead
+// @see screen.set_fullscreen
 // @param is_fullscreen boolean
 // @function screen_set_fullscreen
 fn screen_set_fullscreen(l: *Lua) i32 {

@@ -149,11 +149,11 @@ function Screen.circle_fill(radius)
 end
 
 --- draws a filled in triangle with the given coordinates.
--- @taparm number ax x-coordinate in pixels
+-- @tparam number ax x-coordinate in pixels
 -- @tparam number ay y-coordinate in pixels
--- @taparm number bx x-coordinate in pixels
+-- @tparam number bx x-coordinate in pixels
 -- @tparam number by y-coordinate in pixels
--- @taparm number cx x-coordinate in pixels
+-- @tparam number cx x-coordinate in pixels
 -- @tparam number cy y-coordinate in pixels
 -- @function screen.triangle
 function Screen.triangle(ax, ay, bx, by, cx, cy)
@@ -161,15 +161,15 @@ function Screen.triangle(ax, ay, bx, by, cx, cy)
 end
 
 --- draws a filled in quad with the given coordinates.
--- @taparm number ax x-coordinate in pixels
+-- @tparam number ax x-coordinate in pixels
 -- @tparam number ay y-coordinate in pixels
--- @taparm number bx x-coordinate in pixels
+-- @tparam number bx x-coordinate in pixels
 -- @tparam number by y-coordinate in pixels
--- @taparm number cx x-coordinate in pixels
+-- @tparam number cx x-coordinate in pixels
 -- @tparam number cy y-coordinate in pixels
 -- @tparam number dx x-coordinate in pixels
 -- @tparam nubmer dy y-coordinate in pixels
--- @function screen.triangle
+-- @function screen.quad
 function Screen.quad(ax, ay, bx, by, cx, cy, dx, dy)
 	_seamstress.screen_quad(ax, ay, bx, by, cx, cy, dx, dy)
 end
@@ -314,24 +314,26 @@ function Screen.click(x, y, state, button) end
 -- @function screen.resized
 function Screen.resized() end
 
---- @class Texture
+--- @section Screen.Texture
 Screen.Texture = { __index = Screen.Texture }
 
 --- renders the texture object with top-left corner at (x,y)
+-- @param self texture to render
 -- @tparam integer x x-coordinate
 -- @tparam integer y y-coordinate
--- @function screen.Texture:render
+-- @function screen.Texture.render
 function Screen.Texture.render(self, x, y)
 	_seamstress.screen_render_texture(self.texture, x, y)
 end
 
 --- renders the texture object with top-left corner at (x,y)
+-- @param self texture to render
 -- @tparam integer x x-coordinate
 -- @tparam integer y y-coordinate
 -- @tparam number theta angle in radians to rotate the texture about its center
 -- @tparam bool flip_h flip horizontally if true
 -- @tparam bool flip_v flip vertically if true
--- @function screen.Texture:render
+-- @function screen.Texture.render_extended
 function Screen.Texture.render_extended(self, x, y, theta, flip_h, flip_v)
 	_seamstress.screen_render_texture_extended(self.texture, x, y, theta, flip_h == true, flip_v == true)
 end

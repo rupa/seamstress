@@ -221,19 +221,19 @@ function Sprocket:set_division(n)
 end
 
 --- set the action for this sprocket
--- @tparam function the action
+-- @tparam function fn the action
 function Sprocket:set_action(fn)
 	self.action = fn
 end
 
 --- set the swing of the sprocket
--- @tparam number the swing value 0-100%
+-- @tparam number swing the swing value 0-100%
 function Sprocket:set_swing(swing)
 	self.swing = util.clamp(swing, 0, 100)
 end
 
 --- set the delay for this sprocket
--- @tparam fraction of the time between beats to delay (0-1)
+-- @tparam number delay fraction of the time between beats to delay (0-1)
 function Sprocket:set_delay(delay)
 	self.delay_new = util.clamp(delay, 0, 1)
 end
