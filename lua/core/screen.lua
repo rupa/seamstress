@@ -7,10 +7,10 @@
   writen for seamstress by @ryleelyman May 31, 2023
 ]]
 local Screen = {
-  width = 256,
-  height = 128,
-  params_width = 256,
-  params_height = 128,
+	width = 256,
+	height = 128,
+	params_width = 256,
+	params_height = 128,
 }
 Screen.__index = Screen
 
@@ -157,7 +157,7 @@ end
 -- @tparam number cy y-coordinate in pixels
 -- @function screen.triangle
 function Screen.triangle(ax, ay, bx, by, cx, cy)
-  _seamstress.screen_triangle(ax, ay, bx, by, cx, cy)
+	_seamstress.screen_triangle(ax, ay, bx, by, cx, cy)
 end
 
 --- draws a filled in quad with the given coordinates.
@@ -171,7 +171,7 @@ end
 -- @tparam nubmer dy y-coordinate in pixels
 -- @function screen.triangle
 function Screen.quad(ax, ay, bx, by, cx, cy, dx, dy)
-  _seamstress.screen_quad(ax, ay, bx, by, cx, cy, dx, dy)
+	_seamstress.screen_quad(ax, ay, bx, by, cx, cy, dx, dy)
 end
 
 --- draws arbitrary vertex-defined geometry.
@@ -182,15 +182,15 @@ end
 -- @param texture (optional) a texture created by `screen.new_texture`
 -- @function screen.geometry
 function Screen.geometry(vertices, indices, texture)
-  if indices then
-    if texture then
-      _seamstress.screen_geometry(vertices, indices, texture.texture)
-    else
-      _seamstress.screen_geometry(vertices, indices)
-    end
-  else
-    _seamstress.screen_geometry(vertices)
-  end
+	if indices then
+		if texture then
+			_seamstress.screen_geometry(vertices, indices, texture.texture)
+		else
+			_seamstress.screen_geometry(vertices, indices)
+		end
+	else
+		_seamstress.screen_geometry(vertices)
+	end
 end
 
 --- draws text to the screen.
@@ -274,17 +274,17 @@ _seamstress.screen = {
 		end
 	end,
 	resized = function(x, y, window)
-    if window == 1 then
-      Screen.width = x
-      Screen.height = y
-      if Screen.resized ~= nil then
-        Screen.resized()
-      end
-    else
-      Screen.params_width = x
-      Screen.params_height = y
-      paramsMenu.redraw()
-    end
+		if window == 1 then
+			Screen.width = x
+			Screen.height = y
+			if Screen.resized ~= nil then
+				Screen.resized()
+			end
+		else
+			Screen.params_width = x
+			Screen.params_height = y
+			paramsMenu.redraw()
+		end
 	end,
 }
 
@@ -322,7 +322,7 @@ Screen.Texture = { __index = Screen.Texture }
 -- @tparam integer y y-coordinate
 -- @function screen.Texture:render
 function Screen.Texture.render(self, x, y)
-  _seamstress.screen_render_texture(self.texture, x, y)
+	_seamstress.screen_render_texture(self.texture, x, y)
 end
 
 --- renders the texture object with top-left corner at (x,y)
@@ -333,7 +333,7 @@ end
 -- @tparam bool flip_v flip vertically if true
 -- @function screen.Texture:render
 function Screen.Texture.render_extended(self, x, y, theta, flip_h, flip_v)
-  _seamstress.screen_render_texture_extended(self.texture, x, y, theta, flip_h == true, flip_v == true)
+	_seamstress.screen_render_texture_extended(self.texture, x, y, theta, flip_h == true, flip_v == true)
 end
 
 --- creates and returns a new texture object
@@ -345,13 +345,13 @@ end
 -- @tparam integer height height in pixels
 -- @function screen.new_texture
 function Screen.new_texture(width, height)
-  local t = {
-    texture = _seamstress.screen_new_texture(width, height),
-    width = width,
-    height = height,
-  }
-  setmetatable(t, Screen.Texture)
-  return t
+	local t = {
+		texture = _seamstress.screen_new_texture(width, height),
+		width = width,
+		height = height,
+	}
+	setmetatable(t, Screen.Texture)
+	return t
 end
 
 return Screen
