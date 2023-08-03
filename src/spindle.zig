@@ -63,6 +63,12 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     register_seamstress("screen_arc", ziglua.wrap(screen_arc));
     register_seamstress("screen_circle", ziglua.wrap(screen_circle));
     register_seamstress("screen_circle_fill", ziglua.wrap(screen_circle_fill));
+    register_seamstress("screen_triangle", ziglua.wrap(screen_triangle));
+    register_seamstress("screen_quad", ziglua.wrap(screen_quad));
+    register_seamstress("screen_geometry", ziglua.wrap(screen_geometry));
+    register_seamstress("screen_new_texture", ziglua.wrap(screen_new_texture));
+    register_seamstress("screen_render_texture", ziglua.wrap(screen_render_texture));
+    register_seamstress("screen_render_texture_extended", ziglua.wrap(screen_render_texture_extended));
     register_seamstress("screen_move", ziglua.wrap(screen_move));
     register_seamstress("screen_move_rel", ziglua.wrap(screen_move_rel));
     register_seamstress("screen_get_size", ziglua.wrap(screen_get_size));
@@ -185,7 +191,7 @@ fn osc_send(l: *Lua) i32 {
     l.checkType(3, ziglua.LuaType.table);
     const len = l.rawLen(3);
     msg = allocator.alloc(osc.Lo_Arg, len) catch |err| {
-        if (err == error.OutOfMemory) logger.err("out of memory!\n", .{});
+        if (err == error.OutOfMemory) logger.err("out of memory!", .{});
         return 0;
     };
     defer allocator.free(msg);
@@ -208,7 +214,11 @@ fn osc_send(l: *Lua) i32 {
                 break :blk osc.Lo_Arg{ .Lo_String = str };
             },
             else => blk: {
-                const str = std.fmt.allocPrint(allocator, "invalid osc argument type {s}", .{l.typeName(l.typeOf(-1))}) catch unreachable;
+                const str = std.fmt.allocPrint(
+                    allocator,
+                    "invalid osc argument type {s}",
+                    .{l.typeName(l.typeOf(-1))},
+                ) catch unreachable;
                 l.raiseErrorStr(str[0..str.len :0], .{});
                 break :blk osc.Lo_Arg{ .Lo_Nil = false };
             },
@@ -593,6 +603,254 @@ fn screen_circle_fill(l: *Lua) i32 {
     screen.circle_fill(@intFromFloat(radius));
     l.setTop(0);
     return 0;
+}
+
+/// draws a filled-in triangle.
+// users should use `screen.triangle` instead
+// @param ax x-coordinate
+// @param ay y-coordinate
+// @param bx x-coordinate
+// @param by y-coordinate
+// @param cx x-coordinate
+// @param cy y-coordinate
+// @see screen.triangle
+// @function screen_triangle
+fn screen_triangle(l: *Lua) i32 {
+    check_num_args(l, 6);
+    const ax = l.checkNumber(1);
+    const ay = l.checkNumber(2);
+    const bx = l.checkNumber(3);
+    const by = l.checkNumber(4);
+    const cx = l.checkNumber(5);
+    const cy = l.checkNumber(6);
+    screen.triangle(
+        @floatCast(ax),
+        @floatCast(ay),
+        @floatCast(bx),
+        @floatCast(by),
+        @floatCast(cx),
+        @floatCast(cy),
+    ) catch unreachable;
+    return 0;
+}
+
+/// draws a filled-in quad.
+// users should use `screen.quad` instead
+// @param ax x-coordinate
+// @param ay y-coordinate
+// @param bx x-coordinate
+// @param by y-coordinate
+// @param cx x-coordinate
+// @param cy y-coordinate
+// @param dx x-coordinate
+// @param dy y-coordinate
+// @see screen.quad
+// @function screen_quad
+fn screen_quad(l: *Lua) i32 {
+    check_num_args(l, 6);
+    const ax = l.checkNumber(1);
+    const ay = l.checkNumber(2);
+    const bx = l.checkNumber(3);
+    const by = l.checkNumber(4);
+    const cx = l.checkNumber(5);
+    const cy = l.checkNumber(6);
+    const dx = l.checkNumber(7);
+    const dy = l.checkNumber(8);
+    screen.quad(
+        @floatCast(ax),
+        @floatCast(ay),
+        @floatCast(bx),
+        @floatCast(by),
+        @floatCast(cx),
+        @floatCast(cy),
+        @floatCast(dx),
+        @floatCast(dy),
+    ) catch unreachable;
+    return 0;
+}
+
+/// creates and returns a new texture
+// users should use `screen.Texture.new` instead
+// @param width width in pixels
+// @param height height in pixels
+// @return texture opaque pointer to texture
+// @see screen.Texture.new
+// @function screen_new_texture
+fn screen_new_texture(l: *Lua) i32 {
+    check_num_args(l, 2);
+    const width = l.checkNumber(1);
+    const height = l.checkNumber(2);
+    const texture = screen.new_texture(
+        @intFromFloat(width),
+        @intFromFloat(height),
+    ) catch {
+        l.pushNil();
+        return 1;
+    };
+    l.pushLightUserdata(texture);
+    return 1;
+}
+
+/// renders texture at given coordinates
+// users shoul use `screen.Texture:render` instead
+// @param x x-coordinate
+// @param y y-coordinate
+// @see screen.Texture:render
+// @function screen_render_texture
+fn screen_render_texture(l: *Lua) i32 {
+    check_num_args(l, 3);
+    const texture = l.toUserdata(screen.Texture, 1) catch unreachable;
+    const x = l.checkNumber(2);
+    const y = l.checkNumber(3);
+    screen.render_texture(texture, @intFromFloat(x), @intFromFloat(y));
+    return 0;
+}
+/// renders texture at given coordinates
+// users shoul use `screen.Texture:render` instead
+// @param x x-coordinate
+// @param y y-coordinate
+// @param theta angle in radians
+// @param flip_h flip horizontally if true
+// @param flip_v flip vertically if true
+// @see screen.Texture:render
+// @function screen_render_texture_extended
+fn screen_render_texture_extended(l: *Lua) i32 {
+    check_num_args(l, 6);
+    const texture = l.toUserdata(screen.Texture, 1) catch unreachable;
+    const x = l.checkNumber(2);
+    const y = l.checkNumber(3);
+    const theta = l.checkNumber(4);
+    const deg = std.math.radiansToDegrees(f64, theta);
+    const flip_h = l.toBoolean(5);
+    const flip_v = l.toBoolean(6);
+    screen.render_texture_extended(
+        texture,
+        @intFromFloat(x),
+        @intFromFloat(y),
+        deg,
+        flip_h,
+        flip_v,
+    );
+    return 0;
+}
+
+/// draws arbitrary vertex-defined geometry.
+// users should use `screen.geometry` instead.
+// @param vertices a list of lists {pos, col, tex_coord},
+// where `pos = {x, y}` is a list of pixel coordinates,
+// where `col = {r, g, b, a}` is a list of color data,
+// and `tex_coord = {x, y}` (which is optional), is a list of texture coordinates
+// @param indices (optional) a list of indices into the vertices list
+// @param texture (optional) a texture to draw from
+fn screen_geometry(l: *Lua) i32 {
+    const texture = if (l.getTop() == 3) blk: {
+        break :blk l.toUserdata(screen.Texture, 3) catch unreachable;
+    } else null;
+    l.checkType(1, ziglua.LuaType.table);
+    const len = l.rawLen(1);
+    var verts = allocator.alloc(screen.Vertex, len) catch |err| {
+        if (err == error.OutOfMemory) logger.err("out of memory!", .{});
+        return 0;
+    };
+    defer allocator.free(verts);
+    for (verts, 0..) |*v, i| {
+        const t = l.getIndex(1, @intCast(i + 1));
+        if (t != .table) l.argError(1, "vertices should be a list of lists");
+        const pos = process_pos(l);
+        const col = process_col(l);
+        const t_coord = process_t_coord(l, texture);
+        v.* = .{
+            .position = pos,
+            .color = col,
+            .tex_coord = t_coord,
+        };
+    }
+    const indices = if (l.getTop() >= 2) blk: {
+        l.checkType(2, ziglua.LuaType.table);
+        const indlen = l.rawLen(2);
+        var ind = allocator.alloc(usize, indlen) catch @panic("OOM!");
+        for (ind, 0..) |*idx, i| {
+            l.pushInteger(@intCast(i + 1));
+            _ = l.getTable(2);
+            idx.* = @intCast(l.toInteger(-1) catch l.argError(2, "indices should be a list of integers"));
+        }
+        break :blk ind;
+    } else null;
+    defer if (indices) |i| allocator.free(i);
+    screen.define_geometry(texture, verts, indices) catch unreachable;
+    return 0;
+}
+
+fn process_pos(l: *Lua) screen.Vertex.Position {
+    var t = l.getIndex(-1, 1);
+    if (t != .table) l.argError(1, "position should be a list of the form {x, y}");
+    t = l.getIndex(-1, 1);
+    if (t != .number) l.argError(1, "position should be a list of numbers");
+    const x = l.toNumber(-1) catch unreachable;
+    l.pop(1);
+    t = l.getIndex(-1, 2);
+    if (t != .number) l.argError(1, "position should be a list of numbers");
+    const y = l.toNumber(-1) catch unreachable;
+    l.pop(1);
+    l.pop(1);
+    return .{ .x = @floatCast(x), .y = @floatCast(y) };
+}
+
+fn process_col(l: *Lua) screen.Vertex.Color {
+    var t = l.getIndex(-1, 2);
+    if (t != .table) l.argError(1, "color should be a list of the form {r, g, b, a?}");
+    const len = l.rawLen(-1);
+    if (len < 3) l.argError(1, "color needs at least three numbers");
+    t = l.getIndex(-1, 1);
+    if (t != .number) l.argError(1, "color should be a list of numbers");
+    const r = l.toNumber(-1) catch unreachable;
+    l.pop(1);
+    t = l.getIndex(-1, 2);
+    if (t != .number) l.argError(1, "color should be a list of numbers");
+    const g = l.toNumber(-1) catch unreachable;
+    l.pop(1);
+    t = l.getIndex(-1, 3);
+    if (t != .number) l.argError(1, "color should be a list of numbers");
+    const b = l.toNumber(-1) catch unreachable;
+    l.pop(1);
+    const a = if (len >= 4) blk: {
+        t = l.getIndex(-1, 1);
+        if (t != .number) l.argError(1, "color should be a list of numbers");
+        const aa = l.toNumber(-1) catch unreachable;
+        l.pop(1);
+        break :blk aa;
+    } else 255;
+    l.pop(1);
+    return .{
+        .r = @intFromFloat(r),
+        .g = @intFromFloat(g),
+        .b = @intFromFloat(b),
+        .a = @intFromFloat(a),
+    };
+}
+
+fn process_t_coord(l: *Lua, texture: ?*screen.Texture) screen.Vertex.Position {
+    if (texture) |txt| {
+        const len = l.rawLen(-1);
+        if (len < 3) return .{ .x = 0, .y = 0 };
+        var t = l.getIndex(-1, 1);
+        if (t != .table) l.argError(1, "tex_coord should be a list of the form {x, y}");
+        t = l.getIndex(-1, 1);
+        if (t != .number) l.argError(1, "tex_coord should be a list of numbers");
+        const x = l.toNumber(-1) catch unreachable;
+        l.pop(1);
+        t = l.getIndex(-1, 2);
+        if (t != .number) l.argError(1, "tex_coord should be a list of numbers");
+        const y = l.toNumber(-1) catch unreachable;
+        _ = y;
+        l.pop(1);
+        return .{
+            .x = @floatCast(x / @as(f64, @floatFromInt(txt.width))),
+            .y = @floatCast(x / @as(f64, @floatFromInt(txt.height))),
+        };
+    }
+    l.pop(1);
+    return .{ .x = 0, .y = 0 };
 }
 
 /// sets screen color.

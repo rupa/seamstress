@@ -27,12 +27,213 @@ const Gui = struct {
     y: c_int = 0,
 };
 
+pub const Texture = struct {
+    texture: *c.SDL_Texture,
+    width: u16,
+    height: u16,
+    zoom: u16 = 1,
+};
+
+pub const Vertex = struct {
+    pub const Position = struct {
+        x: f32 = 0,
+        y: f32 = 0,
+    };
+    pub const Color = struct {
+        r: u8 = 0,
+        g: u8 = 0,
+        b: u8 = 0,
+        a: u8 = 0,
+    };
+    position: Position = .{},
+    color: Color = .{},
+    tex_coord: Position = .{},
+};
+
+var textures: std.ArrayList(Texture) = undefined;
+
 var windows: [2]Gui = undefined;
 var current: usize = 0;
 
 var font: *c.TTF_Font = undefined;
 var thread: std.Thread = undefined;
 var quit = false;
+
+pub fn define_geometry(texture: ?*const Texture, vertices: []const Vertex, indices: ?[]const usize) !void {
+    var verts = try allocator.alloc(c.SDL_Vertex, vertices.len);
+    defer allocator.free(verts);
+    for (vertices, 0..) |v, i| {
+        verts[i] = .{
+            .position = .{
+                .x = v.position.x,
+                .y = v.position.y,
+            },
+            .color = .{
+                .r = v.color.r,
+                .g = v.color.g,
+                .b = v.color.b,
+                .a = v.color.a,
+            },
+            .tex_coord = .{
+                .x = v.tex_coord.x,
+                .y = v.tex_coord.y,
+            },
+        };
+    }
+    const txt = if (texture) |t| t.texture else null;
+    const ind = if (indices) |i| blk: {
+        var list = try allocator.alloc(c_int, i.len);
+        for (list, 0..) |*l, j| {
+            l.* = @intCast(i[j]);
+        }
+        break :blk list;
+    } else null;
+    defer if (ind) |i| allocator.free(i);
+    const len = if (indices) |i| i.len else 0;
+    sdl_call(c.SDL_RenderGeometry(
+        windows[current].render,
+        txt,
+        verts.ptr,
+        @intCast(verts.len),
+        if (ind) |i| i.ptr else null,
+        @intCast(len),
+    ), "screen.define_geometry()");
+}
+
+pub fn triangle(ax: f32, ay: f32, bx: f32, by: f32, cx: f32, cy: f32) !void {
+    var r: u8 = undefined;
+    var g: u8 = undefined;
+    var b: u8 = undefined;
+    var a: u8 = undefined;
+    const gui = windows[current];
+    _ = c.SDL_GetRenderDrawColor(gui.render, &r, &g, &b, &a);
+    const col = .{ .r = r, .g = g, .b = b, .a = a };
+    const vertices = [3]Vertex{
+        .{ .position = .{
+            .x = ax,
+            .y = ay,
+        }, .color = col, .tex_coord = .{} },
+        .{ .position = .{
+            .x = bx,
+            .y = by,
+        }, .color = col, .tex_coord = .{} },
+        .{ .position = .{
+            .x = cx,
+            .y = cy,
+        }, .color = col, .tex_coord = .{} },
+    };
+    try define_geometry(null, &vertices, null);
+}
+
+pub fn quad(ax: f32, ay: f32, bx: f32, by: f32, cx: f32, cy: f32, dx: f32, dy: f32) !void {
+    var r: u8 = undefined;
+    var g: u8 = undefined;
+    var b: u8 = undefined;
+    var a: u8 = undefined;
+    const gui = windows[current];
+    _ = c.SDL_GetRenderDrawColor(gui.render, &r, &g, &b, &a);
+    const col = .{ .r = r, .g = g, .b = b, .a = a };
+    const vertices = [4]Vertex{
+        .{ .position = .{
+            .x = ax,
+            .y = ay,
+        }, .color = col, .tex_coord = .{} },
+        .{ .position = .{
+            .x = bx,
+            .y = by,
+        }, .color = col, .tex_coord = .{} },
+        .{ .position = .{
+            .x = cx,
+            .y = cy,
+        }, .color = col, .tex_coord = .{} },
+        .{ .position = .{
+            .x = dx,
+            .y = dy,
+        }, .color = col, .tex_coord = .{} },
+    };
+    try define_geometry(null, &vertices, null);
+}
+
+pub fn new_texture(width: u16, height: u16) !*Texture {
+    const n: usize = @as(usize, width * windows[current].zoom) * @as(usize, height * windows[current].zoom) * 4;
+    var pixels = try allocator.alloc(u8, n);
+    defer allocator.free(pixels);
+    sdl_call(c.SDL_RenderReadPixels(
+        windows[current].render,
+        &c.SDL_Rect{
+            .x = windows[current].x,
+            .y = windows[current].y,
+            .w = width * windows[current].zoom,
+            .h = height * windows[current].zoom,
+        },
+        c.SDL_PIXELFORMAT_RGBA32,
+        pixels.ptr,
+        width * windows[current].zoom * 4,
+    ), "screen.new_texture()");
+    const t = c.SDL_CreateTexture(
+        windows[current].render,
+        c.SDL_PIXELFORMAT_RGBA32,
+        c.SDL_TEXTUREACCESS_STATIC,
+        width * windows[current].zoom,
+        height * windows[current].zoom,
+    ) orelse {
+        logger.err("{s}: error: {s}", .{ "screen.new_texture()", c.SDL_GetError() });
+        return error.Fail;
+    };
+    sdl_call(c.SDL_UpdateTexture(
+        t,
+        null,
+        pixels.ptr,
+        width * windows[current].zoom * 4,
+    ), "screen.new_texture()");
+    sdl_call(c.SDL_LockTexture(t, null, null, null), "screen.new_texture()");
+    var texture = textures.addOne() catch @panic("OOM!");
+    texture.* = .{
+        .texture = t,
+        .width = width,
+        .height = height,
+        .zoom = windows[current].zoom,
+    };
+    return texture;
+}
+
+pub fn render_texture(texture: *const Texture, x: u16, y: u16) void {
+    sdl_call(c.SDL_SetTextureBlendMode(
+        texture.*.texture,
+        c.SDL_BLENDMODE_BLEND,
+    ), "screen.render_texture()");
+    sdl_call(c.SDL_RenderCopy(
+        windows[current].render,
+        texture.*.texture,
+        null,
+        &c.SDL_Rect{ .x = x, .y = y, .w = texture.width, .h = texture.height },
+    ), "screen.render_texture()");
+}
+
+pub fn render_texture_extended(
+    texture: *const Texture,
+    x: u16,
+    y: u16,
+    deg: f64,
+    flip_h: bool,
+    flip_v: bool,
+) void {
+    var flip = if (flip_h) c.SDL_FLIP_HORIZONTAL else 0;
+    flip = flip | if (flip_v) c.SDL_FLIP_VERTICAL else 0;
+    sdl_call(c.SDL_SetTextureBlendMode(
+        texture.*.texture,
+        c.SDL_BLENDMODE_BLEND,
+    ), "screen.render_texture()");
+    sdl_call(c.SDL_RenderCopyEx(
+        windows[current].render,
+        texture.*.texture,
+        null,
+        &c.SDL_Rect{ .x = x, .y = y, .w = texture.width, .h = texture.height },
+        @floatCast(deg),
+        null,
+        @intCast(flip),
+    ), "screen.render_texture()");
+}
 
 pub fn show(target: usize) void {
     c.SDL_ShowWindow(windows[target].window);
@@ -386,12 +587,12 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
     allocator = alloc_pointer;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) < 0) {
-        logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
+        logger.err("screen.init(): {s}", .{c.SDL_GetError()});
         return error.Fail;
     }
 
     if (c.TTF_Init() < 0) {
-        logger.err("screen.init(): {s}\n", .{c.TTF_GetError()});
+        logger.err("screen.init(): {s}", .{c.TTF_GetError()});
         return error.Fail;
     }
 
@@ -399,7 +600,7 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
     defer allocator.free(filename);
     var f = c.TTF_OpenFont(filename, 8);
     font = f orelse {
-        logger.err("screen.init(): {s}\n", .{c.TTF_GetError()});
+        logger.err("screen.init(): {s}", .{c.TTF_GetError()});
         return error.Fail;
     };
 
@@ -413,12 +614,12 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
             c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE,
         );
         var window = w orelse {
-            logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
+            logger.err("screen.init(): {s}", .{c.SDL_GetError()});
             return error.Fail;
         };
         var r = c.SDL_CreateRenderer(window, 0, 0);
         var render = r orelse {
-            logger.err("screen.init(): {s}\n", .{c.SDL_GetError()});
+            logger.err("screen.init(): {s}", .{c.SDL_GetError()});
             return error.Fail;
         };
         c.SDL_SetWindowMinimumSize(window, width, height);
@@ -436,6 +637,7 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
         refresh();
     }
     set(0);
+    textures = std.ArrayList(Texture).init(allocator);
     thread = try std.Thread.spawn(.{}, loop, .{});
 }
 
@@ -554,6 +756,10 @@ pub fn deinit() void {
     quit = true;
     thread.join();
     if (missed > 0) logger.warn("missed {d} events", .{missed});
+    for (textures.items) |texture| {
+        c.SDL_DestroyTexture(texture.texture);
+    }
+    textures.deinit();
     c.TTF_CloseFont(font);
     var i: usize = 0;
     while (i < 2) : (i += 1) {
@@ -575,7 +781,7 @@ fn loop() void {
 }
 
 fn sdl_call(err: c_int, name: []const u8) void {
-    if (err < -1) {
+    if (err < 0) {
         logger.err("{s}: error: {s}", .{ name, c.SDL_GetError() });
     }
 }

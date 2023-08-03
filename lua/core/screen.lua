@@ -148,6 +148,51 @@ function Screen.circle_fill(radius)
 	_seamstress.screen_circle_fill(radius)
 end
 
+--- draws a filled in triangle with the given coordinates.
+-- @taparm number ax x-coordinate in pixels
+-- @tparam number ay y-coordinate in pixels
+-- @taparm number bx x-coordinate in pixels
+-- @tparam number by y-coordinate in pixels
+-- @taparm number cx x-coordinate in pixels
+-- @tparam number cy y-coordinate in pixels
+-- @function screen.triangle
+function Screen.triangle(ax, ay, bx, by, cx, cy)
+  _seamstress.screen_triangle(ax, ay, bx, by, cx, cy)
+end
+
+--- draws a filled in quad with the given coordinates.
+-- @taparm number ax x-coordinate in pixels
+-- @tparam number ay y-coordinate in pixels
+-- @taparm number bx x-coordinate in pixels
+-- @tparam number by y-coordinate in pixels
+-- @taparm number cx x-coordinate in pixels
+-- @tparam number cy y-coordinate in pixels
+-- @tparam number dx x-coordinate in pixels
+-- @tparam nubmer dy y-coordinate in pixels
+-- @function screen.triangle
+function Screen.quad(ax, ay, bx, by, cx, cy, dx, dy)
+  _seamstress.screen_quad(ax, ay, bx, by, cx, cy, dx, dy)
+end
+
+--- draws arbitrary vertex-defined geometry.
+-- @param vertices a list of lists of the form {{x, y}, {r, g, b, a?}, {t_x, t_y}?},
+-- where x, y, t_x, and t_y represent pixel coordinates
+-- and r, g, b, a represents a color.
+-- @param indices (optional) a list of indices into the vertices list
+-- @param texture (optional) a texture created by `screen.new_texture`
+-- @function screen.geometry
+function Screen.geometry(vertices, indices, texture)
+  if indices then
+    if texture then
+      _seamstress.screen_geometry(vertices, indices, texture.texture)
+    else
+      _seamstress.screen_geometry(vertices, indices)
+    end
+  else
+    _seamstress.screen_geometry(vertices)
+  end
+end
+
 --- draws text to the screen.
 -- @tparam string text text to draw
 -- @function screen.text
@@ -268,5 +313,45 @@ function Screen.click(x, y, state, button) end
 --- callback executed when the user resizes a window
 -- @function screen.resized
 function Screen.resized() end
+
+--- @class Texture
+Screen.Texture = { __index = Screen.Texture }
+
+--- renders the texture object with top-left corner at (x,y)
+-- @tparam integer x x-coordinate
+-- @tparam integer y y-coordinate
+-- @function screen.Texture:render
+function Screen.Texture.render(self, x, y)
+  _seamstress.screen_render_texture(self.texture, x, y)
+end
+
+--- renders the texture object with top-left corner at (x,y)
+-- @tparam integer x x-coordinate
+-- @tparam integer y y-coordinate
+-- @tparam number theta angle in radians to rotate the texture about its center
+-- @tparam bool flip_h flip horizontally if true
+-- @tparam bool flip_v flip vertically if true
+-- @function screen.Texture:render
+function Screen.Texture.render_extended(self, x, y, theta, flip_h, flip_v)
+  _seamstress.screen_render_texture_extended(self.texture, x, y, theta, flip_h == true, flip_v == true)
+end
+
+--- creates and returns a new texture object
+-- the texture data is a rectangle of dimensions (width,height)
+-- with top-left corner the current screen position
+-- call before calling `screen.refresh`.
+-- this operation is slower than most screen calls; try not to call it in a clock, for instance.
+-- @tparam integer width width in pixels
+-- @tparam integer height height in pixels
+-- @function screen.new_texture
+function Screen.new_texture(width, height)
+  local t = {
+    texture = _seamstress.screen_new_texture(width, height),
+    width = width,
+    height = height,
+  }
+  setmetatable(t, Screen.Texture)
+  return t
+end
 
 return Screen
