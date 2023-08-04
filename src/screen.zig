@@ -187,7 +187,6 @@ pub fn new_texture(width: u16, height: u16) !*Texture {
         pixels.ptr,
         width * windows[current].zoom * 4,
     ), "screen.new_texture()");
-    sdl_call(c.SDL_LockTexture(t, null, null, null), "screen.new_texture()");
     var texture = textures.addOne() catch @panic("OOM!");
     texture.* = .{
         .texture = t,
@@ -212,7 +211,7 @@ pub fn new_texture_from_file(filename: [:0]const u8) !*Texture {
         &width,
         &height,
     ), "screen.new_texture_from_file()");
-    var texture = try allocator.create(Texture);
+    var texture = textures.addOne() catch @panic("OOM!");
     texture.* = .{
         .texture = txt,
         .width = @intCast(width),
