@@ -360,7 +360,7 @@ end
 
 --- creates and returns a new texture object from an image file
 -- @tparam string filename absolute path to file
--- @function screen.new_texture
+-- @function screen.new_texture_from_file
 function Screen.new_texture_from_file(filename)
   local texture = _seamstress.screen_new_texture_from_file(filename)
   local w, h = _seamstress.screen_texture_dimensions(texture)
