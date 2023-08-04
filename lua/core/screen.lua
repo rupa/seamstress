@@ -315,27 +315,29 @@ function Screen.click(x, y, state, button) end
 function Screen.resized() end
 
 --- @section Screen.Texture
-Screen.Texture = { __index = Screen.Texture }
+Texture = {}
+Screen.Texture = Texture
+Texture.__index = Texture
 
 --- renders the texture object with top-left corner at (x,y)
--- @param self texture to render
 -- @tparam integer x x-coordinate
 -- @tparam integer y y-coordinate
--- @function screen.Texture.render
-function Screen.Texture.render(self, x, y)
-	_seamstress.screen_render_texture(self.texture, x, y)
+-- @tparam number zoom scale at which to draw, defaults to 1
+-- @function Texture:render
+function Texture:render(x, y, zoom)
+	_seamstress.screen_render_texture(self.texture, x, y, zoom or 1)
 end
 
 --- renders the texture object with top-left corner at (x,y)
--- @param self texture to render
 -- @tparam integer x x-coordinate
 -- @tparam integer y y-coordinate
 -- @tparam number theta angle in radians to rotate the texture about its center
 -- @tparam bool flip_h flip horizontally if true
 -- @tparam bool flip_v flip vertically if true
+-- @tparam number zoom scale at which to draw, defaults to 1
 -- @function screen.Texture.render_extended
-function Screen.Texture.render_extended(self, x, y, theta, flip_h, flip_v)
-	_seamstress.screen_render_texture_extended(self.texture, x, y, theta, flip_h == true, flip_v == true)
+function Texture:render_extended(x, y, theta, flip_h, flip_v, zoom)
+	_seamstress.screen_render_texture_extended(self.texture, x, y, zoom or 1, theta, flip_h == true, flip_v == true)
 end
 
 --- creates and returns a new texture object
@@ -352,7 +354,22 @@ function Screen.new_texture(width, height)
 		width = width,
 		height = height,
 	}
-	setmetatable(t, Screen.Texture)
+	setmetatable(t, Texture)
+	return t
+end
+
+--- creates and returns a new texture object from an image file
+-- @tparam string filename absolute path to file
+-- @function screen.new_texture
+function Screen.new_texture_from_file(filename)
+  local texture = _seamstress.screen_new_texture_from_file(filename)
+  local w, h = _seamstress.screen_texture_dimensions(texture)
+	local t = {
+		texture = texture,
+		width = w,
+		height = h,
+	}
+	setmetatable(t, Texture)
 	return t
 end
 

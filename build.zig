@@ -11,11 +11,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     const t = exe.target_info.target;
+    _ = t;
     b.installArtifact(exe);
-    exe.addIncludePath("lib/ziglua/zig-out/include/lua");
-    exe.addIncludePath("lib/readline/zig-out/include/readline");
-    exe.addIncludePath("lib/readline/zig-out/include");
-    exe.addIncludePath("lib/liblo/zig-out/include");
+    exe.addIncludePath(std.Build.LazyPath.relative("lib/ziglua/zig-out/include/lua"));
+    exe.addIncludePath(std.Build.LazyPath.relative("lib/SDL/zig-out/include/SDL2"));
+    exe.addIncludePath(std.Build.LazyPath.relative("lib/readline/zig-out/include/readline"));
+    exe.addIncludePath(std.Build.LazyPath.relative("lib/readline/zig-out/include"));
+    exe.addIncludePath(std.Build.LazyPath.relative("lib/liblo/zig-out/include"));
 
     const install_lua_files = b.addInstallDirectory(.{
         .source_dir = .{ .path = "lua" },
@@ -23,7 +25,7 @@ pub fn build(b: *std.Build) void {
         .install_subdir = "lua",
     });
     const install_font = b.addInstallFileWithDir(
-        std.Build.FileSource.relative("resources/04b03.ttf"),
+        std.Build.LazyPath.relative("resources/04b03.ttf"),
         .{ .custom = "share/seamstress" },
         "resources/04b03.ttf",
     );
@@ -36,6 +38,12 @@ pub fn build(b: *std.Build) void {
     });
     exe.linkLibrary(zig_sdl.artifact("SDL2"));
     exe.linkLibrary(zig_sdl.artifact("SDL2_ttf"));
+
+    const zig_sdl_img = b.dependency("IMG", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.linkLibrary(zig_sdl_img.artifact("SDL2_image"));
 
     const zig_lua = b.dependency("Lua", .{
         .target = target,
@@ -56,11 +64,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.linkLibrary(zig_liblo.artifact("liblo"));
-
-    if (t.os.tag == .macos) {
-        exe.addIncludePath("/opt/homebrew/opt/freetype2/include/freetype2");
-        exe.addIncludePath("/opt/homebrew/opt/freetype/include/freetype2");
-    }
 
     const zig_rtmidi = b.dependency("rtmidi", .{
         .target = target,

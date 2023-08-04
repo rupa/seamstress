@@ -7,6 +7,7 @@ const c = @cImport({
     @cInclude("SDL2/SDL_render.h");
     @cInclude("SDL2/SDL_surface.h");
     @cInclude("SDL2/SDL_video.h");
+    @cInclude("SDL2_image/SDL_image.h");
 });
 
 var allocator: std.mem.Allocator = undefined;
@@ -197,16 +198,42 @@ pub fn new_texture(width: u16, height: u16) !*Texture {
     return texture;
 }
 
-pub fn render_texture(texture: *const Texture, x: u16, y: u16) void {
+pub fn new_texture_from_file(filename: [:0]const u8) !*Texture {
+    const txt = c.IMG_LoadTexture(windows[current].render, filename.ptr) orelse {
+        logger.err("{s}: error: {s}", .{ "screen.new_texture_from_file()", c.IMG_GetError() });
+        return error.Fail;
+    };
+    var width: i32 = undefined;
+    var height: i32 = undefined;
+    sdl_call(c.SDL_QueryTexture(
+        txt,
+        null,
+        null,
+        &width,
+        &height,
+    ), "screen.new_texture_from_file()");
+    var texture = try allocator.create(Texture);
+    texture.* = .{
+        .texture = txt,
+        .width = @intCast(width),
+        .height = @intCast(height),
+        .zoom = 1,
+    };
+    return texture;
+}
+
+pub fn render_texture(texture: *const Texture, x: u16, y: u16, zoom: f64) void {
     sdl_call(c.SDL_SetTextureBlendMode(
         texture.*.texture,
         c.SDL_BLENDMODE_BLEND,
     ), "screen.render_texture()");
+    const w: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
+    const h: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
     sdl_call(c.SDL_RenderCopy(
         windows[current].render,
         texture.*.texture,
         null,
-        &c.SDL_Rect{ .x = x, .y = y, .w = texture.width, .h = texture.height },
+        &c.SDL_Rect{ .x = x, .y = y, .w = w, .h = h },
     ), "screen.render_texture()");
 }
 
@@ -214,10 +241,13 @@ pub fn render_texture_extended(
     texture: *const Texture,
     x: u16,
     y: u16,
+    zoom: f64,
     deg: f64,
     flip_h: bool,
     flip_v: bool,
 ) void {
+    const w: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
+    const h: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
     var flip = if (flip_h) c.SDL_FLIP_HORIZONTAL else 0;
     flip = flip | if (flip_v) c.SDL_FLIP_VERTICAL else 0;
     sdl_call(c.SDL_SetTextureBlendMode(
@@ -228,7 +258,7 @@ pub fn render_texture_extended(
         windows[current].render,
         texture.*.texture,
         null,
-        &c.SDL_Rect{ .x = x, .y = y, .w = texture.width, .h = texture.height },
+        &c.SDL_Rect{ .x = x, .y = y, .w = w, .h = h },
         @floatCast(deg),
         null,
         @intCast(flip),
@@ -596,6 +626,11 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
         return error.Fail;
     }
 
+    if (c.IMG_Init(c.IMG_INIT_JPG | c.IMG_INIT_PNG) == 0) {
+        logger.err("screen.init(): {s}", .{c.IMG_GetError()});
+        return error.Fail;
+    }
+
     const filename = try std.fmt.allocPrintZ(allocator, "{s}/04b03.ttf", .{resources});
     defer allocator.free(filename);
     var f = c.TTF_OpenFont(filename, 8);
@@ -766,6 +801,7 @@ pub fn deinit() void {
         c.SDL_DestroyRenderer(windows[i].render);
         c.SDL_DestroyWindow(windows[i].window);
     }
+    c.IMG_Quit();
     c.TTF_Quit();
     c.SDL_Quit();
 }

@@ -67,6 +67,8 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     register_seamstress("screen_quad", ziglua.wrap(screen_quad));
     register_seamstress("screen_geometry", ziglua.wrap(screen_geometry));
     register_seamstress("screen_new_texture", ziglua.wrap(screen_new_texture));
+    register_seamstress("screen_new_texture_from_file", ziglua.wrap(screen_new_texture_from_file));
+    register_seamstress("screen_texture_dimensions", ziglua.wrap(screen_texture_dimensions));
     register_seamstress("screen_render_texture", ziglua.wrap(screen_render_texture));
     register_seamstress("screen_render_texture_extended", ziglua.wrap(screen_render_texture_extended));
     register_seamstress("screen_move", ziglua.wrap(screen_move));
@@ -691,40 +693,77 @@ fn screen_new_texture(l: *Lua) i32 {
     return 1;
 }
 
+/// creates and returns a new texture from image file
+// users should use `screen.new_texture` instead
+// @param filename path to file
+// @return texture opaque pointer to texture
+// @see screen.new_texture_from_file
+// @function screen_new_texture_from_file
+fn screen_new_texture_from_file(l: *Lua) i32 {
+    check_num_args(l, 1);
+    const filename = l.checkString(1);
+    const texture = screen.new_texture_from_file(std.mem.span(filename)) catch {
+        l.pushNil();
+        return 1;
+    };
+    l.pushLightUserdata(texture);
+    return 1;
+}
+
+/// returns the texture's dimensions
+// @param texture opaque pointer to texture
+// @return width width in pixels
+// @return height height in pixels
+// @function screen_texture_dimensions
+fn screen_texture_dimensions(l: *Lua) i32 {
+    check_num_args(l, 1);
+    const texture = l.toUserdata(screen.Texture, 1) catch unreachable;
+    l.pushInteger(texture.width);
+    l.pushInteger(texture.height);
+    return 2;
+}
+
 /// renders texture at given coordinates
-// users shoul use `screen.Texture.render` instead
+// users should use `screen.Texture.render` instead
+// @param texture opaque pointer to texture
 // @param x x-coordinate
 // @param y y-coordinate
+// @param zoom scale to draw at
 // @function screen_render_texture
 fn screen_render_texture(l: *Lua) i32 {
-    check_num_args(l, 3);
+    check_num_args(l, 4);
     const texture = l.toUserdata(screen.Texture, 1) catch unreachable;
-    const x = l.checkNumber(2);
-    const y = l.checkNumber(3);
-    screen.render_texture(texture, @intFromFloat(x), @intFromFloat(y));
+    const x = l.checkNumber(2) - 1;
+    const y = l.checkNumber(3) - 1;
+    const zoom = l.checkNumber(4);
+    screen.render_texture(texture, @intFromFloat(x), @intFromFloat(y), zoom);
     return 0;
 }
 /// renders texture at given coordinates with rotation and flip
-// users shoul use `screen.Texture.render_extended` instead
+// users should use `screen.Texture.render_extended` instead
+// @param texture opaque pointer to texture
 // @param x x-coordinate
 // @param y y-coordinate
+// @param zoom scale to draw at
 // @param theta angle in radians
 // @param flip_h flip horizontally if true
 // @param flip_v flip vertically if true
 // @function screen_render_texture_extended
 fn screen_render_texture_extended(l: *Lua) i32 {
-    check_num_args(l, 6);
+    check_num_args(l, 7);
     const texture = l.toUserdata(screen.Texture, 1) catch unreachable;
-    const x = l.checkNumber(2);
-    const y = l.checkNumber(3);
-    const theta = l.checkNumber(4);
+    const x = l.checkNumber(2) - 1;
+    const y = l.checkNumber(3) - 1;
+    const zoom = l.checkNumber(4);
+    const theta = l.checkNumber(5);
     const deg = std.math.radiansToDegrees(f64, theta);
-    const flip_h = l.toBoolean(5);
-    const flip_v = l.toBoolean(6);
+    const flip_h = l.toBoolean(6);
+    const flip_v = l.toBoolean(7);
     screen.render_texture_extended(
         texture,
         @intFromFloat(x),
         @intFromFloat(y),
+        zoom,
         deg,
         flip_h,
         flip_v,
@@ -791,7 +830,7 @@ fn process_pos(l: *Lua) screen.Vertex.Position {
     const y = l.toNumber(-1) catch unreachable;
     l.pop(1);
     l.pop(1);
-    return .{ .x = @floatCast(x), .y = @floatCast(y) };
+    return .{ .x = @floatCast(x - 1), .y = @floatCast(y - 1) };
 }
 
 fn process_col(l: *Lua) screen.Vertex.Color {
@@ -843,8 +882,8 @@ fn process_t_coord(l: *Lua, texture: ?*screen.Texture) screen.Vertex.Position {
         _ = y;
         l.pop(1);
         return .{
-            .x = @floatCast(x / @as(f64, @floatFromInt(txt.width))),
-            .y = @floatCast(x / @as(f64, @floatFromInt(txt.height))),
+            .x = @floatCast((x - 1) / @as(f64, @floatFromInt(txt.width))),
+            .y = @floatCast((x - 1) / @as(f64, @floatFromInt(txt.height))),
         };
     }
     l.pop(1);
