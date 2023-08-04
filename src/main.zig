@@ -10,7 +10,7 @@ const input = @import("input.zig");
 const screen = @import("screen.zig");
 const midi = @import("midi.zig");
 
-const VERSION = .{ .major = 0, .minor = 15, .patch = 1 };
+const VERSION = .{ .major = 0, .minor = 16, .patch = 0 };
 
 pub const std_options = struct {
     pub const log_level = .info;
