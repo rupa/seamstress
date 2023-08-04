@@ -24,10 +24,9 @@ and will not work as expected if you move only the binary to a different folder.
 ## building from source
 
 
-building seamstress from source requires the master build of [zig](https://github.com/ziglang/zig).
+building seamstress from source requires version 0.11.0 of [zig](https://github.com/ziglang/zig).
 the easiest way to get zig is to download a binary from [here](https://ziglang.org/download/) and add it to your PATH.
-currently the earliest zig supported is `0.11.0-dev.3859`.
-once zig 0.11 is released, seamstress will follow releases of zig, rather than the master.
+seamstress follows releases of zig.
 to build seamstress, install the dependencies listed above (as well as `pkg-config`) and invoke
 
 ```bash
