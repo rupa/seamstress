@@ -60,7 +60,6 @@ pub fn init(prefix: []const u8, config: []const u8, time: std.time.Timer, alloc_
     register_seamstress("screen_text_right", ziglua.wrap(screen_text_right));
     register_seamstress("screen_color", ziglua.wrap(screen_color));
     register_seamstress("screen_clear", ziglua.wrap(screen_clear));
-    register_seamstress("screen_transparent", ziglua.wrap(screen_transparent));
     register_seamstress("screen_set", ziglua.wrap(screen_set));
     register_seamstress("screen_show", ziglua.wrap(screen_show));
     register_seamstress("screen_arc", ziglua.wrap(screen_arc));
@@ -798,7 +797,7 @@ fn screen_geometry(l: *Lua) i32 {
         if (t != .table) l.argError(1, "vertices should be a list of lists");
         const pos = process_pos(l);
         const col = process_col(l);
-        const t_coord = process_t_coord(l, texture);
+        const t_coord = process_t_coord(l);
         v.* = .{
             .position = pos,
             .color = col,
@@ -812,7 +811,8 @@ fn screen_geometry(l: *Lua) i32 {
         for (ind, 0..) |*idx, i| {
             l.pushInteger(@intCast(i + 1));
             _ = l.getTable(2);
-            idx.* = @intCast(l.toInteger(-1) catch l.argError(2, "indices should be a list of integers"));
+            const index = l.toInteger(-1) catch l.argError(2, "indices should be a list of integers");
+            idx.* = @intCast(index - 1);
             l.pop(1);
         }
         break :blk ind;
@@ -871,28 +871,24 @@ fn process_col(l: *Lua) screen.Vertex.Color {
     };
 }
 
-fn process_t_coord(l: *Lua, texture: ?*screen.Texture) screen.Vertex.Position {
-    if (texture) |txt| {
-        const len = l.rawLen(-1);
-        if (len < 3) return .{ .x = 0, .y = 0 };
-        var t = l.getIndex(-1, 1);
-        if (t != .table) l.argError(1, "tex_coord should be a list of the form {x, y}");
-        t = l.getIndex(-1, 1);
-        if (t != .number) l.argError(1, "tex_coord should be a list of numbers");
-        const x = l.toNumber(-1) catch unreachable;
-        l.pop(1);
-        t = l.getIndex(-1, 2);
-        if (t != .number) l.argError(1, "tex_coord should be a list of numbers");
-        const y = l.toNumber(-1) catch unreachable;
-        _ = y;
-        l.pop(1);
-        return .{
-            .x = @floatCast((x - 1) / @as(f64, @floatFromInt(txt.width))),
-            .y = @floatCast((x - 1) / @as(f64, @floatFromInt(txt.height))),
-        };
-    }
+fn process_t_coord(l: *Lua) screen.Vertex.Position {
+    const len = l.rawLen(-1);
+    if (len < 3) return .{ .x = 0, .y = 0 };
+    var t = l.getIndex(-1, 3);
+    if (t != .table) l.argError(1, "tex_coord should be a list of the form {x, y}");
+    t = l.getIndex(-1, 1);
+    if (t != .number) l.argError(1, "tex_coord should be a list of numbers");
+    const x = l.toNumber(-1) catch unreachable;
     l.pop(1);
-    return .{ .x = 0, .y = 0 };
+    t = l.getIndex(-1, 2);
+    if (t != .number) l.argError(1, "tex_coord should be a list of numbers");
+    const y = l.toNumber(-1) catch unreachable;
+    l.pop(1);
+    l.pop(1);
+    return .{
+        .x = @floatCast(x),
+        .y = @floatCast(y),
+    };
 }
 
 /// sets screen color.
@@ -921,17 +917,6 @@ fn screen_color(l: *Lua) i32 {
 fn screen_clear(l: *Lua) i32 {
     check_num_args(l, 0);
     screen.clear();
-    return 0;
-}
-
-/// clears the screen to transparent.
-// useful mainly for drawing textures
-// users should use `screen.clear` instead
-// @see screen.clear
-// @function screen_clear
-fn screen_transparent(l: *Lua) i32 {
-    check_num_args(l, 0);
-    screen.transparent();
     return 0;
 }
 

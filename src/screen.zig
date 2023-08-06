@@ -63,8 +63,8 @@ var quit = false;
 pub fn define_geometry(texture: ?*const Texture, vertices: []const Vertex, indices: ?[]const usize) !void {
     var verts = try allocator.alloc(c.SDL_Vertex, vertices.len);
     defer allocator.free(verts);
-    for (vertices, 0..) |v, i| {
-        verts[i] = .{
+    for (vertices, verts) |v, *w| {
+        w.* = .{
             .position = .{
                 .x = v.position.x,
                 .y = v.position.y,
@@ -287,20 +287,9 @@ pub fn refresh() void {
     c.SDL_RenderPresent(windows[current].render);
 }
 
-pub fn transparent() void {
-    sdl_call(
-        c.SDL_SetRenderDrawColor(windows[current].render, 0, 0, 0, 0),
-        "screen.transparent()",
-    );
-    sdl_call(
-        c.SDL_RenderClear(windows[current].render),
-        "screen.transparent()",
-    );
-}
-
 pub fn clear() void {
     sdl_call(
-        c.SDL_SetRenderDrawColor(windows[current].render, 0, 0, 0, 255),
+        c.SDL_SetRenderDrawColor(windows[current].render, 0, 0, 0, 0),
         "screen.clear()",
     );
     sdl_call(
