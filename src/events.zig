@@ -100,125 +100,63 @@ pub const Data = union(enum) {
 
 var allocator: std.mem.Allocator = undefined;
 
-const Queue = struct {
-    const Node = struct {
-        // node
-        next: ?*Node,
-        prev: ?*Node,
-        ev: *Data,
-    };
-    read_head: ?*Node,
-    read_tail: ?*Node,
-    read_size: usize,
-    write_head: ?*Node,
-    write_tail: ?*Node,
-    write_size: usize,
-    lock: std.Thread.Mutex,
+const Context = struct {
     cond: std.Thread.Condition,
-    inline fn get_new(self: *Queue) *Node {
-        var node = self.write_head orelse {
-            @panic("no nodes free!");
-        };
-        self.write_head = node.next;
-        node.next = null;
-        node.prev = null;
-        if (self.write_size == 1) self.write_tail = null;
-        self.write_size -= 1;
-        return node;
-    }
-    inline fn return_to_pool(self: *Queue, node: *Node) void {
-        if (self.write_tail) |n| {
-            self.write_tail = node;
-            n.next = node;
-            node.prev = n;
-        } else {
-            std.debug.assert(self.write_size == 0);
-            self.write_head = node;
-            self.write_tail = node;
-        }
-        self.write_size += 1;
-    }
-    fn push(self: *Queue, data: Data) void {
-        var new_node = self.get_new();
-        new_node.ev.* = data;
-        if (self.read_tail) |n| {
-            self.read_tail = new_node;
-            n.next = new_node;
-            new_node.prev = n;
-        } else {
-            std.debug.assert(self.read_size == 0);
-            self.read_tail = new_node;
-            self.read_head = new_node;
-        }
-        self.read_size += 1;
-    }
-    fn pop(self: *Queue) ?*Data {
-        if (self.read_head) |n| {
-            const ev = n.ev;
-            self.read_head = n.next;
-            n.next = null;
-            self.return_to_pool(n);
-            if (self.read_size == 1) self.read_tail = null;
-            self.read_size -= 1;
-            return ev;
-        } else {
-            std.debug.assert(self.read_size == 0);
-            return null;
-        }
-    }
-    fn deinit(self: *Queue) void {
-        var node = self.write_head;
-        while (node) |n| {
-            node = n.next;
-            allocator.destroy(n.ev);
-            allocator.destroy(n);
-        }
-    }
+    lock: std.Thread.Mutex,
 };
 
+fn prioritize(context: Context, a: Data, b: Data) std.math.Order {
+    _ = context;
+    switch (a) {
+        .Clock_Resume, .Metro => {
+            switch (b) {
+                .Clock_Resume, .Metro => return .eq,
+                else => return .lt,
+            }
+        },
+        .Screen_Check => {
+            switch (b) {
+                .Screen_Check => return .eq,
+                else => return .gt,
+            }
+        },
+        else => {
+            switch (b) {
+                .Clock_Resume, .Metro => return .gt,
+                .Screen_Check => return .lt,
+                else => return .eq,
+            }
+        },
+    }
+}
+
+const Queue = std.PriorityQueue(Data, Context, prioritize);
 var queue: Queue = undefined;
 
 var quit: bool = false;
 
 pub fn init(alloc_ptr: std.mem.Allocator) !void {
     allocator = alloc_ptr;
-    queue = Queue{
-        // queue
-        .read_head = null,
-        .read_tail = null,
-        .read_size = 0,
-        .write_head = null,
-        .write_tail = null,
-        .write_size = 0,
-        .cond = .{},
-        .lock = .{},
-    };
-    var i: u16 = 0;
-    while (i < 5000) : (i += 1) {
-        var node = try allocator.create(Queue.Node);
-        var data = try allocator.create(Data);
-        data.* = undefined;
-        node.* = Queue.Node{ .ev = data, .next = null, .prev = null };
-        queue.return_to_pool(node);
-    }
+    queue = Queue.init(allocator, .{ .cond = .{}, .lock = .{} });
+    try queue.ensureTotalCapacity(5000);
 }
 
 pub fn loop() !void {
     while (!quit) {
-        queue.lock.lock();
-        while (queue.read_size == 0) {
+        queue.context.lock.lock();
+        while (queue.peek() == null) {
             if (quit) break;
-            queue.cond.wait(&queue.lock);
+            queue.context.cond.wait(&queue.context.lock);
             continue;
         }
-        const ev = queue.pop();
-        queue.lock.unlock();
-        if (ev != null) try handle(ev.?);
+        const ev = queue.removeOrNull();
+        queue.context.lock.unlock();
+        if (ev) |event| try handle(event);
     }
 }
 
-pub fn free(event: *Data) void {
-    switch (event.*) {
+pub fn free(event: Data) void {
+    switch (event) {
         .OSC => |e| {
             allocator.free(e.from_host);
             allocator.free(e.from_port);
@@ -236,24 +174,24 @@ pub fn free(event: *Data) void {
 }
 
 pub fn post(event: Data) void {
-    queue.lock.lock();
-    queue.push(event);
-    queue.cond.signal();
-    queue.lock.unlock();
+    queue.context.lock.lock();
+    queue.add(event) catch @panic("too many events!\n");
+    queue.context.cond.signal();
+    queue.context.lock.unlock();
 }
 
 pub fn handle_pending() !void {
-    var event: ?*Data = null;
+    var event: ?Data = null;
     var done = false;
     while (!done) {
-        queue.lock.lock();
-        if (queue.read_size > 0) {
-            event = queue.pop();
+        queue.context.lock.lock();
+        if (queue.count() > 0) {
+            event = queue.removeOrNull();
         } else {
             done = true;
         }
-        queue.lock.unlock();
-        if (event != null) try handle(event.?);
+        queue.context.lock.unlock();
+        if (event) |ev| try handle(ev);
         event = null;
     }
 }
@@ -264,11 +202,11 @@ pub fn deinit() void {
 }
 
 fn free_pending() void {
-    var event: ?*Data = null;
+    var event: ?Data = null;
     var done = false;
     while (!done) {
-        if (queue.read_size > 0) {
-            event = queue.pop();
+        if (queue.count() > 0) {
+            event = queue.remove();
         } else {
             done = true;
         }
@@ -277,8 +215,8 @@ fn free_pending() void {
     }
 }
 
-fn handle(event: *Data) !void {
-    switch (event.*) {
+fn handle(event: Data) !void {
+    switch (event) {
         .Quit => quit = true,
         .Exec_Code_Line => |e| try spindle.exec_code_line(e.line),
         .OSC => |e| try spindle.osc_event(e.from_host, e.from_port, e.path, e.msg),
@@ -298,7 +236,6 @@ fn handle(event: *Data) !void {
         .Screen_Resized => |e| try spindle.screen_resized(e.w, e.h, e.window),
         .Metro => |e| {
             try spindle.metro_event(e.id, e.stage);
-            metros.set_hot(e.id);
         },
         .MIDI_Add => |e| try spindle.midi_add(e.dev),
         .MIDI_Remove => |e| try spindle.midi_remove(e.dev_type, e.id),

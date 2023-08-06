@@ -10,20 +10,20 @@ const input = @import("input.zig");
 const screen = @import("screen.zig");
 const midi = @import("midi.zig");
 
-const VERSION = .{ .major = 0, .minor = 16, .patch = 1 };
+const VERSION = .{ .major = 0, .minor = 16, .patch = 2 };
 
 pub const std_options = struct {
     pub const log_level = .info;
     pub const logFn = log;
 };
 
-var start_time: i64 = undefined;
+var timer: std.time.Timer = undefined;
 
 var logfile: std.fs.File = undefined;
 var allocator: std.mem.Allocator = undefined;
 
 pub fn main() !void {
-    start_time = std.time.milliTimestamp();
+    timer = try std.time.Timer.start();
     var loc_buf = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
     const location = try std.fs.selfExeDirPath(&loc_buf);
     const logger = std.log.scoped(.main);
@@ -53,7 +53,7 @@ pub fn main() !void {
     defer events.deinit();
 
     logger.info("init metros", .{});
-    try metros.init(allocator);
+    try metros.init(timer, allocator);
     defer metros.deinit();
 
     logger.info("init clocks", .{});
@@ -61,7 +61,7 @@ pub fn main() !void {
     defer clocks.deinit();
 
     logger.info("init spindle", .{});
-    try spindle.init(prefix, config, allocator);
+    try spindle.init(prefix, config, timer, allocator);
 
     logger.info("init MIDI", .{});
     try midi.init(allocator);
@@ -116,6 +116,6 @@ fn log(
     const scope_prefix = "(" ++ @tagName(scope) ++ ") ";
     const prefix = "[" ++ comptime level.asText() ++ "] " ++ scope_prefix;
     const writer = logfile.writer();
-    const timestamp = std.time.milliTimestamp() - start_time;
+    const timestamp = @divTrunc(timer.read(), std.time.ns_per_us);
     writer.print(prefix ++ "+{d}: " ++ format ++ "\n", .{timestamp} ++ log_args) catch return;
 }

@@ -194,6 +194,10 @@ pub fn new_texture(width: u16, height: u16) !*Texture {
         .height = height,
         .zoom = windows[current].zoom,
     };
+    sdl_call(c.SDL_SetTextureBlendMode(
+        texture.*.texture,
+        c.SDL_BLENDMODE_BLEND,
+    ), "screen.render_texture()");
     return texture;
 }
 
@@ -218,16 +222,16 @@ pub fn new_texture_from_file(filename: [:0]const u8) !*Texture {
         .height = @intCast(height),
         .zoom = 1,
     };
-    return texture;
-}
-
-pub fn render_texture(texture: *const Texture, x: u16, y: u16, zoom: f64) void {
     sdl_call(c.SDL_SetTextureBlendMode(
         texture.*.texture,
         c.SDL_BLENDMODE_BLEND,
     ), "screen.render_texture()");
-    const w: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
-    const h: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
+    return texture;
+}
+
+pub fn render_texture(texture: *const Texture, x: i32, y: i32, zoom: f64) void {
+    const w: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
+    const h: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
     sdl_call(c.SDL_RenderCopy(
         windows[current].render,
         texture.*.texture,
@@ -238,21 +242,17 @@ pub fn render_texture(texture: *const Texture, x: u16, y: u16, zoom: f64) void {
 
 pub fn render_texture_extended(
     texture: *const Texture,
-    x: u16,
-    y: u16,
+    x: i32,
+    y: i32,
     zoom: f64,
     deg: f64,
     flip_h: bool,
     flip_v: bool,
 ) void {
-    const w: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
-    const h: u16 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
+    const w: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
+    const h: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
     var flip = if (flip_h) c.SDL_FLIP_HORIZONTAL else 0;
     flip = flip | if (flip_v) c.SDL_FLIP_VERTICAL else 0;
-    sdl_call(c.SDL_SetTextureBlendMode(
-        texture.*.texture,
-        c.SDL_BLENDMODE_BLEND,
-    ), "screen.render_texture()");
     sdl_call(c.SDL_RenderCopyEx(
         windows[current].render,
         texture.*.texture,
@@ -285,6 +285,17 @@ pub fn move_rel(x: c_int, y: c_int) void {
 
 pub fn refresh() void {
     c.SDL_RenderPresent(windows[current].render);
+}
+
+pub fn transparent() void {
+    sdl_call(
+        c.SDL_SetRenderDrawColor(windows[current].render, 0, 0, 0, 0),
+        "screen.transparent()",
+    );
+    sdl_call(
+        c.SDL_RenderClear(windows[current].render),
+        "screen.transparent()",
+    );
 }
 
 pub fn clear() void {

@@ -19,8 +19,10 @@ var lvm: Lua = undefined;
 var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.spindle);
 var stdout = std.io.getStdOut().writer();
+var timer: std.time.Timer = undefined;
 
-pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Allocator) !void {
+pub fn init(prefix: []const u8, config: []const u8, time: std.time.Timer, alloc_pointer: std.mem.Allocator) !void {
+    timer = time;
     allocator = alloc_pointer;
 
     logger.info("starting lua vm", .{});
@@ -58,6 +60,7 @@ pub fn init(prefix: []const u8, config: []const u8, alloc_pointer: std.mem.Alloc
     register_seamstress("screen_text_right", ziglua.wrap(screen_text_right));
     register_seamstress("screen_color", ziglua.wrap(screen_color));
     register_seamstress("screen_clear", ziglua.wrap(screen_clear));
+    register_seamstress("screen_transparent", ziglua.wrap(screen_transparent));
     register_seamstress("screen_set", ziglua.wrap(screen_set));
     register_seamstress("screen_show", ziglua.wrap(screen_show));
     register_seamstress("screen_arc", ziglua.wrap(screen_arc));
@@ -810,11 +813,13 @@ fn screen_geometry(l: *Lua) i32 {
             l.pushInteger(@intCast(i + 1));
             _ = l.getTable(2);
             idx.* = @intCast(l.toInteger(-1) catch l.argError(2, "indices should be a list of integers"));
+            l.pop(1);
         }
         break :blk ind;
     } else null;
     defer if (indices) |i| allocator.free(i);
     screen.define_geometry(texture, verts, indices) catch unreachable;
+    l.setTop(0);
     return 0;
 }
 
@@ -916,6 +921,17 @@ fn screen_color(l: *Lua) i32 {
 fn screen_clear(l: *Lua) i32 {
     check_num_args(l, 0);
     screen.clear();
+    return 0;
+}
+
+/// clears the screen to transparent.
+// useful mainly for drawing textures
+// users should use `screen.clear` instead
+// @see screen.clear
+// @function screen_clear
+fn screen_transparent(l: *Lua) i32 {
+    check_num_args(l, 0);
+    screen.transparent();
     return 0;
 }
 
@@ -1192,8 +1208,8 @@ fn clock_cancel(l: *Lua) i32 {
 // @function get_time
 fn get_time(l: *Lua) i32 {
     check_num_args(l, 0);
-    const microseconds: f64 = @floatFromInt(std.time.microTimestamp());
-    l.pushNumber(microseconds / std.time.us_per_s);
+    const nanoseconds: f64 = @floatFromInt(timer.read());
+    l.pushNumber(nanoseconds / std.time.ns_per_s);
     return 1;
 }
 

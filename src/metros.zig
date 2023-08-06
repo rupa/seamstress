@@ -3,44 +3,53 @@ const events = @import("events.zig");
 
 const Status = enum { Running, Stopped };
 const logger = std.log.scoped(.metros);
+var timer: std.time.Timer = undefined;
+
+const Thread = struct {
+    pid: std.Thread = undefined,
+    quit: bool = false,
+    fn cancel(self: *Thread) void {
+        self.quit = true;
+        self.pid.detach();
+    }
+};
 
 const Metro = struct {
     // metro struct
     status: Status = .Stopped,
     seconds: f64 = 1.0,
     id: u8,
-    pending: i32 = 0,
-    missed: usize = 0,
     count: i64 = -1,
     stage: i64 = 0,
     delta: u64 = undefined,
-    thread: ?std.Thread = null,
+    time: u64 = undefined,
+    thread: ?*Thread = null,
     stage_lock: std.Thread.Mutex = .{},
     status_lock: std.Thread.Mutex = .{},
+    fn set_time(self: *Metro) void {
+        self.time = std.time.nanoTimestamp();
+    }
     fn stop(self: *Metro) void {
         self.status_lock.lock();
         self.status = Status.Stopped;
         self.status_lock.unlock();
         if (self.thread) |pid| {
-            pid.join();
-        }
-        if (self.missed > 0) {
-            logger.warn("thread {d}: missed {d} events!", .{ self.id + 1, self.missed });
-            self.missed = 0;
+            pid.cancel();
         }
         self.thread = null;
     }
     fn bang(self: *Metro) void {
-        if (self.pending < 100) {
-            const event = .{ .Metro = .{ .id = self.id, .stage = self.stage } };
-            events.post(event);
-            self.pending += 1;
-        } else self.missed += 1;
+        const event = .{ .Metro = .{ .id = self.id, .stage = self.stage } };
+        events.post(event);
     }
     fn init(self: *Metro, delta: u64, count: i64) !void {
         self.delta = delta;
         self.count = count;
-        self.thread = try std.Thread.spawn(.{}, loop, .{self});
+        self.thread = try allocator.create(Thread);
+        self.thread.?.* = .{
+            .quit = false,
+            .pid = try std.Thread.spawn(.{}, loop, .{ self, self.thread.? }),
+        };
     }
     fn reset(self: *Metro, stage: i64) void {
         self.stage_lock.lock();
@@ -50,6 +59,11 @@ const Metro = struct {
             self.stage = 0;
         }
         self.stage_lock.unlock();
+    }
+    fn wait(self: *Metro) void {
+        self.time += self.delta;
+        const wait_time = @as(i128, self.time) - timer.read();
+        if (wait_time > 0) std.time.sleep(@intCast(wait_time));
     }
 };
 
@@ -67,6 +81,7 @@ pub fn start(idx: u8, seconds: f64, count: i64, stage: i64) !void {
         return;
     }
     var metro = &metros[idx];
+    metro.time = timer.read();
     metro.status_lock.lock();
     if (metro.status == Status.Running) {
         metro.status_lock.unlock();
@@ -93,7 +108,8 @@ const max_num_metros = 36;
 var metros: []Metro = undefined;
 var allocator: std.mem.Allocator = undefined;
 
-pub fn init(alloc_pointer: std.mem.Allocator) !void {
+pub fn init(time: std.time.Timer, alloc_pointer: std.mem.Allocator) !void {
+    timer = time;
     allocator = alloc_pointer;
     metros = try allocator.alloc(Metro, max_num_metros);
     for (metros, 0..) |*metro, idx| {
@@ -101,40 +117,38 @@ pub fn init(alloc_pointer: std.mem.Allocator) !void {
     }
 }
 
-pub fn set_hot(idx: u8) void {
-    metros[idx].pending -= 1;
-}
-
 pub fn deinit() void {
     defer allocator.free(metros);
-    for (metros) |*metro| metro.stop();
+    for (metros) |*metro| {
+        if (metro.thread) |pid| {
+            pid.quit = true;
+            pid.pid.join();
+        }
+    }
 }
 
-fn loop(self: *Metro) void {
-    var quit = false;
+fn loop(self: *Metro, pid: *Thread) void {
     self.status_lock.lock();
     self.status = Status.Running;
     self.status_lock.unlock();
 
-    while (!quit) {
-        std.time.sleep(self.delta);
+    while (!pid.quit) {
+        self.wait();
         self.stage_lock.lock();
-        if (self.stage >= self.count and self.count >= 0) {
-            quit = true;
+        if (self.stage >= self.count and self.count > 0) {
+            pid.quit = true;
         }
         self.stage_lock.unlock();
         self.status_lock.lock();
         if (self.status == Status.Stopped) {
-            quit = true;
+            pid.quit = true;
         }
         self.status_lock.unlock();
-        if (quit) break;
+        if (pid.quit) break;
         self.bang();
         self.stage_lock.lock();
         self.stage += 1;
         self.stage_lock.unlock();
     }
-    self.status_lock.lock();
-    self.status = Status.Stopped;
-    self.status_lock.unlock();
+    allocator.destroy(pid);
 }
