@@ -37,9 +37,9 @@ fn input_run() !void {
     c.using_history();
     c.stifle_history(500);
     const home = std.os.getenv("HOME");
-    var history_file: []u8 = undefined;
+    var history_file: [:0]u8 = undefined;
     if (home) |h| {
-        history_file = try std.fmt.allocPrint(allocator, "{s}/.seamstress_history", .{h});
+        history_file = try std.fs.path.joinZ(allocator, &.{ h, "seamstress_history" });
         const file = try std.fs.createFileAbsolute(history_file, .{ .read = true, .truncate = false });
         file.close();
         _ = c.read_history(history_file.ptr);
