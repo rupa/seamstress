@@ -14,9 +14,9 @@ sudo apt-get install \
      libxrandr-dev libxss-dev libjack-dev libpipewire-0.3-dev \
      multimedia-devel libgudev-1.0-0 libdrm-dev
 pushd lib/SDL
-/opt/zig/zig build -Doptimize=ReleaseFast
+/opt/zig/zig build -Doptimize=ReleaseFast -Dtarget=x86_64-linux -Dcpu=x86_64
 popd
 pushd lib/ziglua
-/opt/zig/zig build -Doptimize=ReleaseFast
+/opt/zig/zig build -Doptimize=ReleaseFast -Dtarget=x86_64-linux -Dcpu=x86_64
 popd
-/opt/zig/zig build -Doptimize=ReleaseFast
+/opt/zig/zig build -Doptimize=ReleaseFast -Dtarget=x86_64-linux -Dcpu=x86_64
