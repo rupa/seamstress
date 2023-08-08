@@ -34,8 +34,11 @@ git submodule update --init --recursive
 zig build
 ```
 
-if you get an error about `lua.h` not being found, try this
+if you get an error about `lua.h` not being found or `SDL2_image` fails to build, try these
 ```bash
+pushd lib/SDL
+zig build
+popd
 pushd lib/ziglua
 zig build
 popd
@@ -45,6 +48,11 @@ and then retry the `zig build` step above.
 NB: these commands build `seamstress` in Debug mode.
 you can change this 
 by passing `-Doptimize=ReleaseFast` or `-Doptimize=ReleaseSafe` to the build command.
+
+NB: `seamstress` will be built as `zig-out/bin/seamstress`; you can add this to your PATH to have it available as `seamstress`.
+
+if you previously built seamstress with `sudo`, you may want to run `sudo zig build uninstall -p /usr/local` to remove the old binary.
+you may also have to delete `~/.cache/zig` as well as `zig-cache` in the relevant directories.
 
 ## usage
 
