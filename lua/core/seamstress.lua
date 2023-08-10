@@ -62,7 +62,7 @@ _startup = function (script_file)
 
   if filename then
     filename = filename .. '.lua'
-    path, scriptname = filename:match("^(.*)/([^.]*).*$")
+    local path, scriptname = filename:match("^(.*)/([^.]*).*$")
 
     seamstress.state.script = filename
     seamstress.state.path = path
@@ -75,6 +75,7 @@ _startup = function (script_file)
   clock.add_params()
   init()
   paramsMenu.init()
+  return seamstress.state.path
 end
 
 _seamstress.cleanup = function()

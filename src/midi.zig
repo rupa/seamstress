@@ -104,6 +104,7 @@ fn remove(id: usize) void {
 }
 
 pub fn init(alloc_pointer: std.mem.Allocator) !void {
+    quit = false;
     allocator = alloc_pointer;
     devices = try allocator.alloc(Device, 32);
     inline for (0..32) |idx| {

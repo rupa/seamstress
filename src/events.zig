@@ -11,6 +11,7 @@ const logger = std.log.scoped(.events);
 
 pub const Data = union(enum) {
     Quit: void,
+    Reset: void,
     Exec_Code_Line: struct {
         line: [:0]const u8,
     },
@@ -133,15 +134,18 @@ fn prioritize(context: Context, a: Data, b: Data) std.math.Order {
 const Queue = std.PriorityQueue(Data, Context, prioritize);
 var queue: Queue = undefined;
 
-var quit: bool = false;
+var quit = false;
+var reset = false;
 
 pub fn init(alloc_ptr: std.mem.Allocator) !void {
+    reset = false;
+    quit = false;
     allocator = alloc_ptr;
     queue = Queue.init(allocator, .{ .cond = .{}, .lock = .{} });
     try queue.ensureTotalCapacity(5000);
 }
 
-pub fn loop() !void {
+pub fn loop() !bool {
     while (!quit) {
         queue.context.lock.lock();
         while (queue.peek() == null) {
@@ -153,6 +157,7 @@ pub fn loop() !void {
         queue.context.lock.unlock();
         if (ev) |event| try handle(event);
     }
+    return reset;
 }
 
 pub fn free(event: Data) void {
@@ -218,6 +223,10 @@ fn free_pending() void {
 fn handle(event: Data) !void {
     switch (event) {
         .Quit => quit = true,
+        .Reset => {
+            quit = true;
+            reset = true;
+        },
         .Exec_Code_Line => |e| try spindle.exec_code_line(e.line),
         .OSC => |e| try spindle.osc_event(e.from_host, e.from_port, e.path, e.msg),
         .Monome_Add => |e| try spindle.monome_add(e.dev),

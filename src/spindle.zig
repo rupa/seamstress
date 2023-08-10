@@ -32,6 +32,8 @@ pub fn init(prefix: []const u8, config: []const u8, time: std.time.Timer, alloc_
 
     lvm.newTable();
 
+    register_seamstress("reset_lvm", ziglua.wrap(reset_lvm));
+
     register_seamstress("osc_send", ziglua.wrap(osc_send));
 
     register_seamstress("grid_set_led", ziglua.wrap(grid_set_led));
@@ -137,11 +139,30 @@ pub fn deinit() void {
     docall(&lvm, 0, 0) catch unreachable;
 }
 
-pub fn startup(script: [:0]const u8) !void {
+pub fn startup(script: [:0]const u8) ![*:0]const u8 {
     _ = lvm.pushString(script);
     _ = try lvm.getGlobal("_startup");
     lvm.insert(1);
-    try docall(&lvm, 1, 0);
+    const base = lvm.getTop() - 1;
+    lvm.pushFunction(ziglua.wrap(message_handler));
+    lvm.insert(base);
+    lvm.protectedCall(1, 1, base) catch |err| {
+        lvm.remove(base);
+        _ = lua_print(&lvm);
+        return err;
+    };
+    lvm.remove(base);
+    const ret = lvm.toString(-1);
+    return ret;
+}
+
+/// resets seamstress.
+// @function reset_lvm
+fn reset_lvm(l: *Lua) i32 {
+    check_num_args(l, 0);
+    const event = .{ .Reset = {} };
+    events.post(event);
+    return 0;
 }
 
 /// sends OSC to specified address.

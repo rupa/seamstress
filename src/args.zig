@@ -5,6 +5,7 @@ pub var local_port: [:0]const u8 = "7777";
 pub var remote_port: [:0]const u8 = "6666";
 pub var width: [:0]const u8 = "256";
 pub var height: [:0]const u8 = "128";
+pub var watch = false;
 
 pub fn parse() !void {
     var args = std.process.args();
@@ -34,6 +35,10 @@ pub fn parse() !void {
                     script_file = next;
                     continue;
                 }
+            },
+            'w' => {
+                watch = true;
+                continue;
             },
             'x' => {
                 if (args.next()) |next| {

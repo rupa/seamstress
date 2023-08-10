@@ -652,6 +652,9 @@ pub fn set_fullscreen(is_fullscreen: bool) void {
 }
 
 pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources: []const u8) !void {
+    quit = false;
+    pending = 0;
+    missed = 0;
     allocator = alloc_pointer;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) < 0) {

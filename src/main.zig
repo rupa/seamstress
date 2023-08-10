@@ -9,8 +9,9 @@ const osc = @import("serialosc.zig");
 const input = @import("input.zig");
 const screen = @import("screen.zig");
 const midi = @import("midi.zig");
+const watcher = @import("watcher.zig");
 
-const VERSION = .{ .major = 0, .minor = 16, .patch = 3 };
+const VERSION = .{ .major = 0, .minor = 17, .patch = 0 };
 
 pub const std_options = struct {
     pub const log_level = .info;
@@ -23,6 +24,7 @@ var logfile: std.fs.File = undefined;
 var allocator: std.mem.Allocator = undefined;
 
 pub fn main() !void {
+    var go_again = true;
     timer = try std.time.Timer.start();
     var loc_buf = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
     const location = try std.fs.selfExeDirPath(&loc_buf);
@@ -30,72 +32,79 @@ pub fn main() !void {
     try args.parse();
     logfile = try std.fs.createFileAbsolute("/tmp/seamstress.log", .{});
     defer logfile.close();
-    try print_version();
-
     var general_allocator = std.heap.GeneralPurposeAllocator(.{}){};
     allocator = general_allocator.allocator();
     defer _ = general_allocator.deinit();
+    while (go_again) {
+        try print_version();
 
-    const path = try std.fs.path.join(allocator, &.{ location, "..", "share", "seamstress", "lua" });
-    defer allocator.free(path);
-    var pref_buf = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
-    const prefix = try std.fs.realpath(path, &pref_buf);
-    defer logger.info("seamstress shutdown complete", .{});
-    const config = std.process.getEnvVarOwned(allocator, "SEAMSTRESS_CONFIG") catch |err| blk: {
-        if (err == std.process.GetEnvVarOwnedError.EnvironmentVariableNotFound) {
-            break :blk try std.fs.path.join(allocator, &.{ prefix, "config.lua" });
-        } else return err;
-    };
-    defer allocator.free(config);
+        const path = try std.fs.path.join(allocator, &.{ location, "..", "share", "seamstress", "lua" });
+        defer allocator.free(path);
+        var pref_buf = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
+        const prefix = try std.fs.realpath(path, &pref_buf);
+        defer logger.info("seamstress shutdown complete", .{});
+        const config = std.process.getEnvVarOwned(allocator, "SEAMSTRESS_CONFIG") catch |err| blk: {
+            if (err == std.process.GetEnvVarOwnedError.EnvironmentVariableNotFound) {
+                break :blk try std.fs.path.join(allocator, &.{ prefix, "config.lua" });
+            } else return err;
+        };
+        defer allocator.free(config);
 
-    logger.info("init events", .{});
-    try events.init(allocator);
-    defer events.deinit();
+        logger.info("init events", .{});
+        try events.init(allocator);
+        defer events.deinit();
 
-    logger.info("init metros", .{});
-    try metros.init(timer, allocator);
-    defer metros.deinit();
+        logger.info("init metros", .{});
+        try metros.init(timer, allocator);
+        defer metros.deinit();
 
-    logger.info("init clocks", .{});
-    try clocks.init(allocator);
-    defer clocks.deinit();
+        logger.info("init clocks", .{});
+        try clocks.init(allocator);
+        defer clocks.deinit();
 
-    logger.info("init spindle", .{});
-    try spindle.init(prefix, config, timer, allocator);
+        logger.info("init spindle", .{});
+        try spindle.init(prefix, config, timer, allocator);
 
-    logger.info("init MIDI", .{});
-    try midi.init(allocator);
-    defer midi.deinit();
+        logger.info("init MIDI", .{});
+        try midi.init(allocator);
+        defer midi.deinit();
 
-    logger.info("init osc", .{});
-    try osc.init(args.local_port, allocator);
-    defer osc.deinit();
+        logger.info("init osc", .{});
+        try osc.init(args.local_port, allocator);
+        defer osc.deinit();
 
-    logger.info("init input", .{});
-    try input.init(allocator);
-    defer input.deinit();
-    // try if (args.curses) curses.init(allocator) else input.init(allocator);
-    // defer if (args.curses) curses.deinit() else input.deinit();
+        logger.info("init input", .{});
+        try input.init(allocator);
+        defer input.deinit();
 
-    logger.info("init screen", .{});
-    const width = try std.fmt.parseUnsigned(u16, args.width, 10);
-    const height = try std.fmt.parseUnsigned(u16, args.height, 10);
-    const assets_path = try std.fs.path.join(allocator, &.{ location, "..", "share", "seamstress", "resources" });
-    defer allocator.free(assets_path);
-    var assets_buf = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
-    const assets = try std.fs.realpath(assets_path, &assets_buf);
-    try screen.init(allocator, width, height, assets);
-    defer screen.deinit();
+        logger.info("init screen", .{});
+        const width = try std.fmt.parseUnsigned(u16, args.width, 10);
+        const height = try std.fmt.parseUnsigned(u16, args.height, 10);
+        const assets_path = try std.fs.path.join(allocator, &.{ location, "..", "share", "seamstress", "resources" });
+        defer allocator.free(assets_path);
+        var assets_buf = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
+        const assets = try std.fs.realpath(assets_path, &assets_buf);
+        try screen.init(allocator, width, height, assets);
+        defer screen.deinit();
 
-    logger.info("handle events", .{});
-    try events.handle_pending();
+        logger.info("handle events", .{});
+        try events.handle_pending();
 
-    logger.info("spinning spindle", .{});
-    try spindle.startup(args.script_file);
+        logger.info("spinning spindle", .{});
+        const filepath = try spindle.startup(args.script_file);
 
-    logger.info("entering main loop", .{});
-    try events.loop();
-    defer spindle.deinit();
+        if (args.watch) {
+            logger.info("watching {s}", .{filepath});
+            try watcher.init(allocator, filepath);
+        }
+
+        logger.info("entering main loop", .{});
+        go_again = try events.loop();
+
+        defer spindle.deinit();
+        defer if (args.watch) watcher.deinit();
+    }
+    std.io.getStdIn().close();
 }
 
 fn print_version() !void {

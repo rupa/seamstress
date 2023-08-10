@@ -14,6 +14,7 @@ var allocator: std.mem.Allocator = undefined;
 const logger = std.log.scoped(.input);
 
 pub fn init(allocator_pointer: std.mem.Allocator) !void {
+    quit = false;
     allocator = allocator_pointer;
     const term = std.os.getenv("TERM") orelse "";
     if (std.mem.eql(u8, term, "emacs") or std.mem.eql(u8, term, "dumb")) {
@@ -26,8 +27,10 @@ pub fn init(allocator_pointer: std.mem.Allocator) !void {
 
 pub fn deinit() void {
     quit = true;
+    const newstdin = std.os.dup(std.io.getStdIn().handle) catch unreachable;
     std.io.getStdIn().close();
     pid.join();
+    std.os.dup2(newstdin, 0) catch unreachable;
 }
 
 fn input_run() !void {
@@ -74,7 +77,7 @@ fn bare_input_run() !void {
     var stdin = std.io.getStdIn().reader();
     var stdout = std.io.getStdOut().writer();
     var fds = [1]std.os.pollfd{
-        .{ .fd = 0, .events = std.os.POLL.IN, .revents = 0 },
+        .{ .fd = std.io.getStdIn().handle, .events = std.os.POLL.IN, .revents = 0 },
     };
     try stdout.print("> ", .{});
     var buf: [1024]u8 = undefined;

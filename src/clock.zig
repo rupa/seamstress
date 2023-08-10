@@ -17,7 +17,7 @@ const Fabric = struct {
     lock: std.Thread.Mutex,
     tick: u64,
     ticks_since_start: u64,
-    quit: bool,
+    quit: bool = false,
     fn init(self: *Fabric) !void {
         self.threads = try allocator.alloc(Clock, 100);
         var i: u8 = 0;

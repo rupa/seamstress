@@ -25,6 +25,7 @@ path = {
 
 _old_print = print
 
+--- include
 function include(file)
   -- local dirs = {norns.state.path, _path.code, _path.extn}
   local dirs = {seamstress.state.path, path.pwd, path.seamstress}
