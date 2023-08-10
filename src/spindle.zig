@@ -139,7 +139,7 @@ pub fn deinit() void {
     docall(&lvm, 0, 0) catch unreachable;
 }
 
-pub fn startup(script: [:0]const u8) ![*:0]const u8 {
+pub fn startup(script: [:0]const u8) !?[*:0]const u8 {
     _ = lvm.pushString(script);
     _ = try lvm.getGlobal("_startup");
     lvm.insert(1);
@@ -152,7 +152,7 @@ pub fn startup(script: [:0]const u8) ![*:0]const u8 {
         return err;
     };
     lvm.remove(base);
-    const ret = lvm.toString(-1);
+    const ret = lvm.toString(-1) catch null;
     return ret;
 }
 

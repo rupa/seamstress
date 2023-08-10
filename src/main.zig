@@ -11,7 +11,7 @@ const screen = @import("screen.zig");
 const midi = @import("midi.zig");
 const watcher = @import("watcher.zig");
 
-const VERSION = .{ .major = 0, .minor = 17, .patch = 0 };
+const VERSION = .{ .major = 0, .minor = 17, .patch = 1 };
 
 pub const std_options = struct {
     pub const log_level = .info;
@@ -93,16 +93,16 @@ pub fn main() !void {
         logger.info("spinning spindle", .{});
         const filepath = try spindle.startup(args.script_file);
 
-        if (args.watch) {
-            logger.info("watching {s}", .{filepath});
-            try watcher.init(allocator, filepath);
+        if (args.watch and filepath != null) {
+            logger.info("watching {s}", .{filepath.?});
+            try watcher.init(allocator, filepath.?);
         }
 
         logger.info("entering main loop", .{});
         go_again = try events.loop();
 
         defer spindle.deinit();
-        defer if (args.watch) watcher.deinit();
+        defer if (args.watch and filepath != null) watcher.deinit();
     }
     std.io.getStdIn().close();
 }
