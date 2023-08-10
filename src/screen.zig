@@ -15,6 +15,30 @@ const logger = std.log.scoped(.screen);
 pub var pending: i32 = 0;
 var missed: usize = 0;
 
+const Bitmask = struct {
+    r: u32,
+    g: u32,
+    b: u32,
+    a: u32,
+};
+
+const BITMASK = if (c.SDL_BYTEORDER == c.SDL_BIG_ENDIAN)
+blk: {
+    break :blk .{
+        .r = 0xff000000,
+        .g = 0x00ff0000,
+        .b = 0x0000ff00,
+        .a = 0x000000ff,
+    };
+} else blk: {
+    break :blk .{
+        .r = 0x000000ff,
+        .g = 0x0000ff00,
+        .b = 0x00ff0000,
+        .a = 0xff000000,
+    };
+};
+
 const Gui = struct {
     window: *c.SDL_Window = undefined,
     render: *c.SDL_Renderer = undefined,
@@ -29,7 +53,7 @@ const Gui = struct {
 };
 
 pub const Texture = struct {
-    texture: *c.SDL_Texture,
+    surface: *c.SDL_Surface,
     width: u16,
     height: u16,
     zoom: u16 = 1,
@@ -81,7 +105,15 @@ pub fn define_geometry(texture: ?*const Texture, vertices: []const Vertex, indic
             },
         };
     }
-    const txt = if (texture) |t| t.texture else null;
+    const txt = if (texture) |t| big: {
+        break :big c.SDL_CreateTextureFromSurface(
+            windows[current].render,
+            t.surface,
+        ) orelse blk: {
+            logger.err("{s}: error: {s}", .{ "screen.define_geometry()", c.SDL_GetError() });
+            break :blk null;
+        };
+    } else null;
     const ind = if (indices) |i| blk: {
         var list = try allocator.alloc(c_int, i.len);
         for (list, 0..) |*l, j| {
@@ -99,6 +131,7 @@ pub fn define_geometry(texture: ?*const Texture, vertices: []const Vertex, indic
         if (ind) |i| i.ptr else null,
         @intCast(len),
     ), "screen.define_geometry()");
+    if (txt) |t| c.SDL_DestroyTexture(t);
 }
 
 pub fn triangle(ax: f32, ay: f32, bx: f32, by: f32, cx: f32, cy: f32) !void {
@@ -152,7 +185,7 @@ pub fn quad(ax: f32, ay: f32, bx: f32, by: f32, cx: f32, cy: f32, dx: f32, dy: f
             .y = dy,
         }, .color = col, .tex_coord = .{} },
     };
-    try define_geometry(null, &vertices, null);
+    try define_geometry(null, &vertices, &.{ 0, 2, 1, 0, 2, 3 });
 }
 
 pub fn new_texture(width: u16, height: u16) !*Texture {
@@ -167,77 +200,72 @@ pub fn new_texture(width: u16, height: u16) !*Texture {
             .w = width * windows[current].zoom,
             .h = height * windows[current].zoom,
         },
-        c.SDL_PIXELFORMAT_RGBA32,
+        0,
         pixels.ptr,
         width * windows[current].zoom * 4,
     ), "screen.new_texture()");
-    const t = c.SDL_CreateTexture(
-        windows[current].render,
-        c.SDL_PIXELFORMAT_RGBA32,
-        c.SDL_TEXTUREACCESS_STATIC,
+    const surf = c.SDL_CreateRGBSurface(
+        0,
         width * windows[current].zoom,
         height * windows[current].zoom,
+        32,
+        BITMASK.r,
+        BITMASK.g,
+        BITMASK.b,
+        BITMASK.a,
     ) orelse {
         logger.err("{s}: error: {s}", .{ "screen.new_texture()", c.SDL_GetError() });
         return error.Fail;
     };
-    sdl_call(c.SDL_UpdateTexture(
-        t,
-        null,
-        pixels.ptr,
-        width * windows[current].zoom * 4,
-    ), "screen.new_texture()");
+    _ = c.SDL_memcpy(surf.*.pixels, pixels.ptr, @intCast(surf.*.h * surf.*.pitch));
     var texture = textures.addOne() catch @panic("OOM!");
     texture.* = .{
-        .texture = t,
+        .surface = surf,
         .width = width,
         .height = height,
         .zoom = windows[current].zoom,
     };
-    sdl_call(c.SDL_SetTextureBlendMode(
-        texture.*.texture,
-        c.SDL_BLENDMODE_BLEND,
-    ), "screen.render_texture()");
     return texture;
 }
 
 pub fn new_texture_from_file(filename: [:0]const u8) !*Texture {
-    const txt = c.IMG_LoadTexture(windows[current].render, filename.ptr) orelse {
+    const surf = c.IMG_Load(filename.ptr) orelse {
         logger.err("{s}: error: {s}", .{ "screen.new_texture_from_file()", c.IMG_GetError() });
         return error.Fail;
     };
-    var width: i32 = undefined;
-    var height: i32 = undefined;
-    sdl_call(c.SDL_QueryTexture(
-        txt,
-        null,
-        null,
-        &width,
-        &height,
-    ), "screen.new_texture_from_file()");
+    var width: i32 = surf.*.w;
+    var height: i32 = surf.*.h;
     var texture = textures.addOne() catch @panic("OOM!");
     texture.* = .{
-        .texture = txt,
+        .surface = surf,
         .width = @intCast(width),
         .height = @intCast(height),
         .zoom = 1,
     };
-    sdl_call(c.SDL_SetTextureBlendMode(
-        texture.*.texture,
-        c.SDL_BLENDMODE_BLEND,
-    ), "screen.render_texture()");
     return texture;
 }
 
-pub fn render_texture(texture: *const Texture, x: i32, y: i32, zoom: f64) void {
+pub fn render_texture(texture: *const Texture, x: i32, y: i32, zoom: f64) !void {
     const w: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
     const h: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
+    const txt = c.SDL_CreateTextureFromSurface(
+        windows[current].render,
+        texture.surface,
+    ) orelse {
+        logger.err("{s}: error: {s}", .{ "screen.render_texture()", c.SDL_GetError() });
+        return error.Fail;
+    };
+    sdl_call(c.SDL_SetTextureBlendMode(
+        txt,
+        c.SDL_BLENDMODE_BLEND,
+    ), "screen.render_texture()");
     sdl_call(c.SDL_RenderCopy(
         windows[current].render,
-        texture.*.texture,
+        txt,
         null,
         &c.SDL_Rect{ .x = x, .y = y, .w = w, .h = h },
     ), "screen.render_texture()");
+    c.SDL_DestroyTexture(txt);
 }
 
 pub fn render_texture_extended(
@@ -248,20 +276,31 @@ pub fn render_texture_extended(
     deg: f64,
     flip_h: bool,
     flip_v: bool,
-) void {
+) !void {
     const w: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.width)) * zoom);
     const h: i32 = @intFromFloat(@as(f64, @floatFromInt(texture.height)) * zoom);
     var flip = if (flip_h) c.SDL_FLIP_HORIZONTAL else 0;
     flip = flip | if (flip_v) c.SDL_FLIP_VERTICAL else 0;
+    const txt = c.SDL_CreateTextureFromSurface(
+        windows[current].render,
+        texture.surface,
+    ) orelse {
+        logger.err("{s}: error: {s}", .{ "screen.render_texture_extended()", c.SDL_GetError() });
+        return error.Fail;
+    };
+    sdl_call(c.SDL_SetTextureBlendMode(
+        txt,
+        c.SDL_BLENDMODE_BLEND,
+    ), "screen.render_texture_extended()");
     sdl_call(c.SDL_RenderCopyEx(
         windows[current].render,
-        texture.*.texture,
+        txt,
         null,
         &c.SDL_Rect{ .x = x, .y = y, .w = w, .h = h },
         @floatCast(deg),
         null,
         @intCast(flip),
-    ), "screen.render_texture()");
+    ), "screen.render_texture_extended()");
 }
 
 pub fn show(target: usize) void {
@@ -669,6 +708,10 @@ pub fn init(alloc_pointer: std.mem.Allocator, width: u16, height: u16, resources
         window_rect(&windows[current]);
         clear();
         refresh();
+        sdl_call(
+            c.SDL_SetRenderDrawBlendMode(windows[current].render, c.SDL_BLENDMODE_BLEND),
+            "screen.init()",
+        );
     }
     set(0);
     textures = std.ArrayList(Texture).init(allocator);
@@ -791,7 +834,7 @@ pub fn deinit() void {
     thread.join();
     if (missed > 0) logger.warn("missed {d} events", .{missed});
     for (textures.items) |texture| {
-        c.SDL_DestroyTexture(texture.texture);
+        c.SDL_FreeSurface(texture.surface);
     }
     textures.deinit();
     c.TTF_CloseFont(font);

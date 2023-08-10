@@ -651,7 +651,7 @@ fn screen_triangle(l: *Lua) i32 {
 // @see screen.quad
 // @function screen_quad
 fn screen_quad(l: *Lua) i32 {
-    check_num_args(l, 6);
+    check_num_args(l, 8);
     const ax = l.checkNumber(1);
     const ay = l.checkNumber(2);
     const bx = l.checkNumber(3);
@@ -738,7 +738,7 @@ fn screen_render_texture(l: *Lua) i32 {
     const x = l.checkNumber(2) - 1;
     const y = l.checkNumber(3) - 1;
     const zoom = l.checkNumber(4);
-    screen.render_texture(texture, @intFromFloat(x), @intFromFloat(y), zoom);
+    screen.render_texture(texture, @intFromFloat(x), @intFromFloat(y), zoom) catch unreachable;
     return 0;
 }
 /// renders texture at given coordinates with rotation and flip
@@ -769,7 +769,7 @@ fn screen_render_texture_extended(l: *Lua) i32 {
         deg,
         flip_h,
         flip_v,
-    );
+    ) catch unreachable;
     return 0;
 }
 
@@ -782,7 +782,8 @@ fn screen_render_texture_extended(l: *Lua) i32 {
 // @param indices (optional) a list of indices into the vertices list
 // @param texture (optional) a texture to draw from
 fn screen_geometry(l: *Lua) i32 {
-    const texture = if (l.getTop() == 3) blk: {
+    const num_args = l.getTop();
+    const texture = if (num_args >= 3) blk: {
         break :blk l.toUserdata(screen.Texture, 3) catch unreachable;
     } else null;
     l.checkType(1, ziglua.LuaType.table);
@@ -804,7 +805,7 @@ fn screen_geometry(l: *Lua) i32 {
             .tex_coord = t_coord,
         };
     }
-    const indices = if (l.getTop() >= 2) blk: {
+    const indices = if (num_args >= 2) blk: {
         l.checkType(2, ziglua.LuaType.table);
         const indlen = l.rawLen(2);
         var ind = allocator.alloc(usize, indlen) catch @panic("OOM!");
@@ -856,7 +857,7 @@ fn process_col(l: *Lua) screen.Vertex.Color {
     const b = l.toNumber(-1) catch unreachable;
     l.pop(1);
     const a = if (len >= 4) blk: {
-        t = l.getIndex(-1, 1);
+        t = l.getIndex(-1, 4);
         if (t != .number) l.argError(1, "color should be a list of numbers");
         const aa = l.toNumber(-1) catch unreachable;
         l.pop(1);
@@ -864,10 +865,10 @@ fn process_col(l: *Lua) screen.Vertex.Color {
     } else 255;
     l.pop(1);
     return .{
-        .r = @intFromFloat(r),
-        .g = @intFromFloat(g),
-        .b = @intFromFloat(b),
-        .a = @intFromFloat(a),
+        .r = @intFromFloat(@min(r, 255)),
+        .g = @intFromFloat(@min(g, 255)),
+        .b = @intFromFloat(@min(b, 255)),
+        .a = @intFromFloat(@min(a, 255)),
     };
 }
 
@@ -1211,7 +1212,7 @@ fn quit_lvm(l: *Lua) i32 {
 
 fn check_num_args(l: *Lua, n: i8) void {
     if (l.getTop() != n) {
-        l.raiseErrorStr("error: requires {d} arguments", .{n});
+        l.raiseErrorStr("error: requires %d arguments", .{n});
     }
 }
 
