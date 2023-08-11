@@ -36,7 +36,7 @@ jobs:
           bash ci/macos-11.sh
       - name: zip artifact
         run: |
-          cd zig-out/ && zip -r9 ../seamstress-macos-x86_64-${{ github.ref_name }}.zip .
+          cd zig-out/ && zip -r9 ../seamstress-macos-x86_64.zip .
       - uses: actions/upload-artifact@v2
         with:
           name: macos-x86_64-${{ github.ref_name }}
